@@ -1,0 +1,27 @@
+[Unit]
+Description=MikroTik ROS Prometheus Exporter
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=prometheus          # Recommend running as a non-root user, e.g., 'prometheus'
+Group=prometheus         # Ensure this user/group exists on the system
+Type=simple
+Restart=on-failure
+RestartSec=5s
+
+# Path to the built binary
+# Adjust this path based on where you deploy the binary
+ExecStart=/usr/local/bin/ros-exporter \
+    --web.listen-address=:9483 \
+    --web.telemetry-path=/metrics \
+    --scrape.timeout=10s
+
+# Security settings (optional but recommended)
+# PrivateTmp=true
+# ProtectSystem=full
+# NoNewPrivileges=true
+# ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
