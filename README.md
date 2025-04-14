@@ -1,5 +1,8 @@
 # MikroTik RouterOS Prometheus Exporter (ros-exporter)
 
+> [!WARNING]
+> This exporter is under development, do not use until first version has bee released.
+
 A Prometheus exporter for MikroTik RouterOS devices.
 
 This exporter connects to MikroTik routers using the native API (via the `go-routeros/routeros` library) and exposes metrics for monitoring with Prometheus.
