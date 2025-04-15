@@ -29,6 +29,12 @@
       "id": "gauge",
       "name": "Gauge",
       "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "Table",
+      "version": ""
     }
   ],
   "annotations": {
@@ -921,305 +927,391 @@
       "type": "row"
     },
     {
-      "collapsed": false,
+      "id": 20,
+      "type": "row",
+      "title": "BGP Peer Stats",
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
         "y": 14
       },
-      "id": 20,
-      "panels": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
+      "collapsed": false,
+      "panels": []
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
           },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [
-                {
-                  "options": {
-                    "0": {
-                      "color": "orange",
-                      "index": 0,
-                      "text": "Down"
-                    },
-                    "1": {
-                      "color": "green",
-                      "index": 1,
-                      "text": "Established"
-                    }
-                  },
-                  "type": "value"
-                }
-              ],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "orange",
-                    "value": null
-                  },
-                  {
-                    "color": "orange",
-                    "value": 0.5
-                  },
-                  {
-                    "color": "green",
-                    "value": 0.9
-                  }
-                ]
-              },
-              "unit": "short"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 5,
-            "w": 8,
-            "x": 0,
-            "y": 15
-          },
-          "id": 22,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "textMode": "auto"
-          },
-          "pluginVersion": "10.4.1",
-          "targets": [
+          "mappings": [
             {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${datasource}"
+              "options": {
+                "0": {
+                  "color": "orange",
+                  "index": 0,
+                  "text": "Down"
+                },
+                "1": {
+                  "color": "green",
+                  "index": 1,
+                  "text": "Established"
+                }
               },
-              "editorMode": "code",
-              "expr": "mikrotik_bgp_peer_state{instance=\"$instance\", name=\"$bgp_peer\"}",
-              "instant": true,
-              "legendFormat": "{{ state_text }}",
-              "range": true,
-              "refId": "A"
+              "type": "value"
             }
           ],
-          "title": "Peer State",
-          "type": "stat"
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.5
+              },
+              {
+                "color": "green",
+                "value": 0.9
+              }
+            ]
+          },
+          "unit": "short",
+          "custom": {
+             "align": "auto",
+             "displayMode": "auto"
+          }
         },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
+        "overrides": [
+          {
+             "matcher": {
+               "id": "byName",
+               "options": "Value"
+             },
+             "properties": [
+               {
+                 "id": "displayName",
+                 "value": "State"
+               }
+             ]
           },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "drawStyle": "line",
-                "fillOpacity": 0,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
-                "lineInterpolation": "linear",
-                "lineWidth": 1,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "auto",
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "short"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 5,
-            "w": 8,
-            "x": 8,
-            "y": 15
-          },
-          "id": 24,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "textMode": "auto"
-          },
-          "pluginVersion": "10.4.1",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${datasource}"
-              },
-              "editorMode": "code",
-              "expr": "mikrotik_bgp_peer_prefix_count{instance=\"$instance\", name=\"$bgp_peer\"}",
-              "instant": true,
-              "legendFormat": "__auto",
-              "range": true,
-              "refId": "A"
-            }
+          {
+             "matcher": {
+               "id": "byName",
+               "options": "Time"
+             },
+             "properties": [
+               {
+                 "id": "custom.hidden",
+                 "value": true
+               }
+             ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 0,
+        "y": 15
+      },
+      "id": 22,
+      "options": {
+        "align": "auto",
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
           ],
-          "title": "Prefixes Received",
-          "type": "stat"
+          "show": false
         },
+        "showHeader": true,
+        "sortBy": [],
+        "wrap": false
+      },
+      "pluginVersion": "10.4.1",
+      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
           },
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "drawStyle": "line",
-                "fillOpacity": 0,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
-                "lineInterpolation": "linear",
-                "lineWidth": 1,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "auto",
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              },
-              "unit": "s"
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 5,
-            "w": 8,
-            "x": 16,
-            "y": 15
-          },
-          "id": 26,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "textMode": "auto"
-          },
-          "pluginVersion": "10.4.1",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${datasource}"
-              },
-              "editorMode": "code",
-              "expr": "mikrotik_bgp_peer_uptime_seconds{instance=\"$instance\", name=\"$bgp_peer\"}",
-              "instant": true,
-              "legendFormat": "__auto",
-              "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "Peer Uptime",
-          "type": "stat"
+          "editorMode": "code",
+          "expr": "mikrotik_bgp_peer_state{instance=\"$instance\"}",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{ name }} - {{ state_text }}",
+          "range": true,
+          "refId": "A"
         }
       ],
-      "repeat": "bgp_peer",
-      "repeatDirection": "v",
-      "title": "BGP Peer: $bgp_peer",
-      "type": "row"
+      "title": "Peer State",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": [
+           {
+             "matcher": {
+               "id": "byName",
+               "options": "Value"
+             },
+             "properties": [
+               {
+                 "id": "displayName",
+                 "value": "Prefixes"
+               }
+             ]
+          },
+          {
+             "matcher": {
+               "id": "byName",
+               "options": "Time"
+             },
+             "properties": [
+               {
+                 "id": "custom.hidden",
+                 "value": true
+               }
+             ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 8,
+        "y": 15
+      },
+      "id": 24,
+      "options": {
+        "align": "auto",
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [],
+        "wrap": false
+      },
+      "pluginVersion": "10.4.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "mikrotik_bgp_peer_prefix_count{instance=\"$instance\"}",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{name}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Prefixes Received",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": [
+           {
+             "matcher": {
+               "id": "byName",
+               "options": "Value"
+             },
+             "properties": [
+               {
+                 "id": "displayName",
+                 "value": "Uptime"
+               }
+             ]
+          },
+          {
+             "matcher": {
+               "id": "byName",
+               "options": "Time"
+             },
+             "properties": [
+               {
+                 "id": "custom.hidden",
+                 "value": true
+               }
+             ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 8,
+        "x": 16,
+        "y": 15
+      },
+      "id": 26,
+      "options": {
+        "align": "auto",
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [],
+        "wrap": false
+      },
+      "pluginVersion": "10.4.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "expr": "mikrotik_bgp_peer_uptime_seconds{instance=\"$instance\"}",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{name}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Peer Uptime",
+      "type": "table"
     },
     {
       "collapsed": false,
@@ -1403,32 +1495,6 @@
         "query": {
           "query": "label_values(mikrotik_up, instance)",
           "refId": "Prometheus-instance-Variable-Query"
-        },
-        "refresh": 1,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
-        "type": "query"
-      },
-      {
-        "current": {
-          "selected": false,
-          "text": [],
-          "value": []
-        },
-        "datasource": {
-          "type": "prometheus",
-          "uid": "${datasource}"
-        },
-        "definition": "label_values(mikrotik_bgp_peer_info{instance=\"$instance\"}, name)",
-        "hide": 0,
-        "includeAll": true,
-        "multi": true,
-        "name": "bgp_peer",
-        "options": [],
-        "query": {
-          "query": "label_values(mikrotik_bgp_peer_info{instance=\"$instance\"}, name)",
-          "refId": "Prometheus-bgp_peer-Variable-Query"
         },
         "refresh": 1,
         "regex": "",
