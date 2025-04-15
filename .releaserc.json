@@ -1,0 +1,36 @@
+{
+  "branches": ["main"],
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    [
+      "@semantic-release/github",
+      {
+        "assets": [
+          {
+            "path": "dist/ros-exporter-linux-amd64"
+          },
+          {
+            "path": "dist/ros-exporter-linux-arm64"
+          },
+          {
+            "path": "dist/ros-exporter-darwin-amd64"
+          },
+          {
+            "path": "dist/ros-exporter-darwin-arm64"
+          },
+          {
+            "path": "dist/checksums.txt"
+          }
+        ]
+      }
+    ],
+    [
+      "@semantic-release/git",
+      {
+        "assets": ["go.mod", "go.sum"],
+        "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+      }
+    ]
+  ]
+}
