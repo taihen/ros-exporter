@@ -65,6 +65,83 @@
   "liveNow": false,
   "panels": [
     {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 100,
+      "panels": [],
+      "title": "System",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 24,
+        "x": 0,
+        "y": 1
+      },
+      "id": 102,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^(?!instance$)/",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "9.5.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "mikrotik_system_info{instance=\"$instance\"}",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "{{label}}",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "System Information",
+      "type": "stat"
+    },
+    {
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
@@ -124,9 +201,9 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
+        "w": 8,
         "x": 0,
-        "y": 0
+        "y": 5
       },
       "id": 2,
       "options": {
@@ -217,9 +294,9 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 0
+        "w": 8,
+        "x": 8,
+        "y": 5
       },
       "id": 4,
       "options": {
@@ -279,22 +356,18 @@
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 0.9
               }
             ]
           },
-          "unit": "s"
+          "unit": "dtdurations"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 0,
-        "y": 8
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 5
       },
       "id": 6,
       "options": {
@@ -327,6 +400,19 @@
       ],
       "title": "Uptime",
       "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 13
+      },
+      "id": 101,
+      "panels": [],
+      "title": "Interfaces",
+      "type": "row"
     },
     {
       "datasource": {
@@ -390,7 +476,7 @@
         "h": 8,
         "w": 24,
         "x": 0,
-        "y": 12
+        "y": 14
       },
       "id": 8,
       "options": {
@@ -438,7 +524,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 20
+        "y": 22
       },
       "id": 10,
       "panels": [],
@@ -495,7 +581,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 21
+        "y": 23
       },
       "id": 12,
       "options": {
@@ -557,7 +643,7 @@
         "h": 4,
         "w": 6,
         "x": 6,
-        "y": 21
+        "y": 23
       },
       "id": 14,
       "options": {
@@ -611,7 +697,7 @@
               }
             ]
           },
-          "unit": "s"
+          "unit": "dtdurations"
         },
         "overrides": []
       },
@@ -619,7 +705,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 21
+        "y": 23
       },
       "id": 16,
       "options": {
@@ -659,7 +745,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 25
+        "y": 27
       },
       "id": 18,
       "panels": [],
@@ -694,7 +780,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 26
+        "y": 28
       },
       "id": 20,
       "options": {
@@ -786,7 +872,7 @@
         "h": 8,
         "w": 18,
         "x": 6,
-        "y": 26
+        "y": 28
       },
       "id": 22,
       "options": {
@@ -928,6 +1014,6 @@
   "timezone": "",
   "title": "MikroTik Overview (ros-exporter)",
   "uid": "mikrotik-ros-exporter-overview",
-  "version": 2,
+  "version": 3,
   "weekStart": ""
 }
