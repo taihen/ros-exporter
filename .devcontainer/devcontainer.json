@@ -1,0 +1,15 @@
+{
+  "name": "ROS Exporter Dev Container",
+  "build": {
+    "dockerfile": "../Dockerfile"
+  },
+  "settings": {
+    "go.toolsManagement.autoUpdate": true,
+    "go.useLanguageServer": true
+  },
+  "extensions": [
+    "golang.go"
+  ],
+  "postCreateCommand": "go mod tidy",
+  "remoteUser": "root"
+}
