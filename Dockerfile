@@ -1,5 +1,5 @@
 # Stage 1: Build the exporter
-FROM golang:1.21-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 
@@ -29,7 +29,7 @@ COPY --from=builder /ros-exporter /bin/ros-exporter
 # Metadata
 LABEL org.opencontainers.image.source="https://github.com/taihen/ros-exporter"
 LABEL org.opencontainers.image.description="Prometheus Exporter for MikroTik RouterOS"
-LABEL org.opencontainers.image.licenses="MIT" # Assuming MIT license will be added
+LABEL org.opencontainers.image.licenses="MIT"
 
 # Expose the default port
 EXPOSE 9483
