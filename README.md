@@ -203,6 +203,7 @@ List the key metrics exposed:
 - transceivers signal and temperature
 - ospf
 - wireless interfaces client count, tx and rx rate, ccq, noice floor and frequency
+- interface speed
 
 ## License
 
