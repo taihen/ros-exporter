@@ -73,6 +73,12 @@ go build -o ros-exporter ./cmd/ros-exporter
 - `-web.telemetry-path`: Path for metrics endpoint (default: `/metrics`).
 - `-scrape.timeout`: Timeout for scraping a target router (default: `10s`).
 
+### Testing
+
+To test base system go the exporter URL and add example target `http://<exporter-address>:9483/metrics?target=<router-address>`.
+
+To test optional feature, add the parameter `feature=true` to URL parameter. In example of `collect_wireless`: `http://<exporter-address>:9483/metrics?target=<router-address>&collect_wireless=true`
+
 ### MikroTik Configuration
 
 Create a read-only user group and user on your MikroTik router:
