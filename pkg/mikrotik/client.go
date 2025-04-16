@@ -157,6 +157,18 @@ type PPPUserStat struct {
 	TxBytes   uint64
 }
 
+// SystemHealth holds information about system health sensors.
+type SystemHealth struct {
+	Temperature    float64 // Often CPU temperature
+	BoardTemperature float64 // Sometimes available as a separate sensor
+	Voltage        float64
+	Current        float64 // Sometimes available
+	PowerConsumed  float64 // Sometimes available
+	FanSpeed       uint64  // Sometimes available
+	// Add other relevant fields as needed based on /system health print output
+}
+
+
 // GetSystemResources fetches system resource information from the router.
 func (c *Client) GetSystemResources() (*SystemResource, error) {
 	reply, err := c.Run("/system/resource/print")
@@ -475,4 +487,87 @@ func (c *Client) GetInterfaceStats() ([]InterfaceStat, error) {
 
 	// Return the stats populated with traffic counters
 	return stats, nil
+}
+
+// GetSystemHealth fetches system health information (like temperature, voltage).
+func (c *Client) GetSystemHealth() (*SystemHealth, error) {
+	reply, err := c.Run("/system/health/print")
+	if err != nil {
+		// Check if the command itself is not supported (common on some models/versions)
+		if strings.Contains(err.Error(), "no such command") || strings.Contains(err.Error(), "unknown command name") {
+			log.Printf("Info: /system/health/print command not found on %s. Temperature monitoring might not be supported.", c.Address)
+			return nil, nil // Return nil, nil to indicate not supported, not an error preventing other metrics
+		}
+		return nil, fmt.Errorf("failed to get system health: %w", err)
+	}
+
+	if len(reply.Re) == 0 {
+		log.Printf("Warning: No system health data received from %s.", c.Address)
+		// It's possible the command exists but returns no data if sensors aren't present/enabled.
+		// Treat this similarly to the command not being found.
+		return nil, nil
+	}
+	healthData := reply.Re[0] // Assuming health info is in the first sentence
+
+	// Helper to parse float values, logging warnings on error
+	parseFloat := func(key string) float64 {
+		valStr := healthData.Map[key]
+		if valStr == "" {
+			// log.Printf("Debug: Health key '%s' not found or empty on %s", key, c.Address)
+			return 0 // Or perhaps math.NaN() if you prefer to distinguish missing from zero
+		}
+		// RouterOS often includes units like 'C' or 'V'. Remove them.
+		valStr = strings.TrimRight(valStr, "CVW RPM") // Add other units as needed
+		val, err := strconv.ParseFloat(valStr, 64)
+		if err != nil {
+			log.Printf("Warning: Could not parse health value for key '%s' ('%s') on %s: %v", key, healthData.Map[key], c.Address, err)
+			return 0 // Or math.NaN()
+		}
+		return val
+	}
+	// Helper to parse uint values, logging warnings on error
+	parseUint := func(key string) uint64 {
+		valStr := healthData.Map[key]
+		if valStr == "" {
+			// log.Printf("Debug: Health key '%s' not found or empty on %s", key, c.Address)
+			return 0
+		}
+		// Remove units if necessary (e.g., RPM)
+		valStr = strings.TrimRight(valStr, " RPM")
+		val, err := strconv.ParseUint(valStr, 10, 64)
+		if err != nil {
+			log.Printf("Warning: Could not parse health value for key '%s' ('%s') on %s: %v", key, healthData.Map[key], c.Address, err)
+			return 0
+		}
+		return val
+	}
+
+
+	// Try common keys for temperature. 'temperature' is often CPU temp.
+	// 'board-temperature', 'cpu-temperature', 'sfp-temperature' might also exist.
+	temp := parseFloat("temperature")
+	boardTemp := parseFloat("board-temperature")
+	if boardTemp == 0 { // Fallback if board-temperature doesn't exist
+		boardTemp = parseFloat("cpu-temperature") // Sometimes 'cpu-temperature' is used instead of 'temperature'
+	}
+	// If 'temperature' was 0 but 'cpu-temperature' exists, use it for the main temp
+	if temp == 0 && boardTemp != 0 && healthData.Map["temperature"] == "" && healthData.Map["cpu-temperature"] != "" {
+		temp = boardTemp
+		// Decide if boardTemp should be reset or kept same as temp in this case
+		// boardTemp = 0 // Option 1: Reset boardTemp if it was just a fallback for the main temp
+	}
+
+
+	health := &SystemHealth{
+		Temperature:    temp,
+		BoardTemperature: boardTemp,
+		Voltage:        parseFloat("voltage"),
+		Current:        parseFloat("current"),
+		PowerConsumed:  parseFloat("power-consumption"), // Check exact key name
+		FanSpeed:       parseUint("fan1-speed"), // Check exact key names (fan2-speed etc.)
+	}
+
+	log.Printf("Debug: Parsed health data for %s: %+v", c.Address, health)
+
+	return health, nil
 }

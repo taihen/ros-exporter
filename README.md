@@ -11,6 +11,7 @@ This exporter connects to MikroTik routers using the native API (via the `go-rou
 
 - Collects metrics for:
   - System Resources (CPU, Memory, Storage, Uptime, Board Info) - **Always Enabled**
+  - System Health (Current and power consumption, fan speed and temperature) - **Always Enabled**x
   - Interface Statistics (Traffic, Packets, Errors, Drops) - **Always Enabled**
     - PPP and PPPoE interfaces are automatically excluded from interface statistics
   - BGP Peer Status (State, Prefixes, Updates, Uptime) - **Optional**
@@ -199,9 +200,6 @@ List the key metrics exposed:
 
 #### Collectors
 
-- power feed current and voltage
-- fans speed
-- cpu and ambient temperature
 - transceivers signal and temperature
 - ospf
 - wireless interfaces client count, tx and rx rate, ccq, noice floor and frequency

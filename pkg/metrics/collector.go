@@ -49,6 +49,14 @@ type MikrotikCollector struct {
 	storageFreeBytesDesc  *prometheus.Desc
 	storageUsedBytesDesc  *prometheus.Desc
 
+	// Health (Temperature, Voltage, etc.)
+	temperatureDesc       *prometheus.Desc
+	boardTemperatureDesc  *prometheus.Desc
+	voltageDesc           *prometheus.Desc
+	currentDesc           *prometheus.Desc // Optional, might not be present
+	powerConsumedDesc     *prometheus.Desc // Optional, might not be present
+	fanSpeedDesc          *prometheus.Desc // Optional, might not be present
+
 	// BGP (Optional)
 	bgpPeerInfoDesc          *prometheus.Desc
 	bgpPeerStateDesc         *prometheus.Desc
@@ -69,7 +77,7 @@ type MikrotikCollector struct {
 
 // NewMikrotikCollector creates a new collector instance.
 // collectBGP and collectPPP flags control optional metric groups.
-func NewMikrotikCollector(client *mikrotik.Client, collectBGP, collectPPP bool) *MikrotikCollector {
+func NewMikrotikCollector(client *mikrotik.Client, collectBGP, collectPPP bool) *MikrotikCollector { //nolint:funlen // Okay to be long due to descriptor initialization
 	mc := &MikrotikCollector{
 		client:     client,
 		collectBGP: collectBGP,
@@ -190,6 +198,39 @@ func NewMikrotikCollector(client *mikrotik.Client, collectBGP, collectPPP bool) 
 			"Used system storage (HDD) space in bytes.",
 			nil, nil,
 		),
+		// Health Descriptions
+		temperatureDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "health", "temperature_celsius"),
+			"System temperature (often CPU) in degrees Celsius.",
+			[]string{"sensor"}, // Add sensor label if needed (e.g., "cpu", "board")
+			nil,
+		),
+		boardTemperatureDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "health", "board_temperature_celsius"),
+			"Board temperature in degrees Celsius.",
+			nil, nil,
+		),
+		voltageDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "health", "voltage_volts"),
+			"System voltage.",
+			nil, nil,
+		),
+		currentDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "health", "current_amperes"),
+			"System current draw in Amperes (if available).",
+			nil, nil,
+		),
+		powerConsumedDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "health", "power_consumed_watts"),
+			"System power consumption in Watts (if available).",
+			nil, nil,
+		),
+		fanSpeedDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "health", "fan_speed_rpm"),
+			"Fan speed in RPM (if available).",
+			[]string{"fan"}, // e.g., "fan1", "fan2"
+			nil,
+		),
 	}
 
 	// Initialize BGP descriptions only if enabled
@@ -307,6 +348,14 @@ func (c *MikrotikCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.storageFreeBytesDesc
 	ch <- c.storageUsedBytesDesc
 
+	// Health metrics
+	ch <- c.temperatureDesc
+	ch <- c.boardTemperatureDesc
+	ch <- c.voltageDesc
+	ch <- c.currentDesc
+	ch <- c.powerConsumedDesc
+	ch <- c.fanSpeedDesc
+
 	// Optional BGP metrics
 	if c.collectBGP {
 		ch <- c.bgpPeerInfoDesc
@@ -340,6 +389,7 @@ func (c *MikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 	up := 1.0
 	lastScrapeError := 0.0
 	var bgpErr error // Declare bgpErr here to make it accessible later
+	var healthErr error // Declare healthErr for health metrics
 
 	// Attempt connection first
 	if err := c.client.Connect(); err != nil {
@@ -425,6 +475,52 @@ func (c *MikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 		}
 	}
 
+	// --- Health Metrics ---
+	health, healthErr := c.client.GetSystemHealth() // Assign to outer healthErr
+	if healthErr != nil {
+		// This error is already logged within GetSystemHealth if it's serious
+		log.Printf("ERROR: Failed to get system health from %s: %v", c.client.Address, healthErr)
+		// Only mark scrape as error if other essential scrapes were okay
+		if sysErr == nil && rbErr == nil && ifErr == nil {
+			lastScrapeError = 1.0
+		}
+	} else if health != nil { // Check if health is not nil (it could be nil if not supported)
+		// Use the generic temperatureDesc with a label for the primary temp
+		// Check if the temperature value is non-zero, indicating it was likely found and parsed.
+		if health.Temperature != 0 {
+			ch <- prometheus.MustNewConstMetric(c.temperatureDesc, prometheus.GaugeValue, health.Temperature, "cpu") // Label as "cpu"
+		}
+		// Use the specific boardTemperatureDesc if available and different from main temp
+		if health.BoardTemperature != 0 && health.BoardTemperature != health.Temperature {
+			// Option 1: Use specific metric
+			// ch <- prometheus.MustNewConstMetric(c.boardTemperatureDesc, prometheus.GaugeValue, health.BoardTemperature)
+			// Option 2: Use generic metric with different label
+			ch <- prometheus.MustNewConstMetric(c.temperatureDesc, prometheus.GaugeValue, health.BoardTemperature, "board")
+		}
+		// Check if voltage is non-zero
+		if health.Voltage != 0 {
+			ch <- prometheus.MustNewConstMetric(c.voltageDesc, prometheus.GaugeValue, health.Voltage)
+		}
+		// Check if current is non-zero
+		if health.Current != 0 {
+			ch <- prometheus.MustNewConstMetric(c.currentDesc, prometheus.GaugeValue, health.Current)
+		}
+		// Check if power consumed is non-zero
+		if health.PowerConsumed != 0 {
+			ch <- prometheus.MustNewConstMetric(c.powerConsumedDesc, prometheus.GaugeValue, health.PowerConsumed)
+		}
+		// Example for fan speed (assuming only fan1 for now)
+		// Check if fan speed is non-zero
+		if health.FanSpeed != 0 {
+			ch <- prometheus.MustNewConstMetric(c.fanSpeedDesc, prometheus.GaugeValue, float64(health.FanSpeed), "fan1")
+		}
+		// Add logic for other fans (fan2, etc.) if needed
+	} else {
+		// health == nil means GetSystemHealth returned nil, nil (likely not supported)
+		log.Printf("Info: System health metrics not available or not supported on %s.", c.client.Address)
+	}
+
+
 	// --- Optional BGP Metrics ---
 	if c.collectBGP {
 		var bgpStats []mikrotik.BGPPeerStat // Corrected type name here
@@ -469,8 +565,9 @@ func (c *MikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 			// Don't mark the whole scrape as failed, but record the error if others were ok
 			// Check BGP error status only if BGP collection was attempted
 			bgpCollectionSuccessful := !c.collectBGP || bgpErr == nil
+			healthCollectionSuccessful := healthErr == nil // Check if health collection had an error
 			// Note: Disk/Storage errors are now handled within the system resource check (sysErr)
-			if sysErr == nil && rbErr == nil && ifErr == nil && bgpCollectionSuccessful {
+			if sysErr == nil && rbErr == nil && ifErr == nil && bgpCollectionSuccessful && healthCollectionSuccessful {
 				lastScrapeError = 1.0
 			}
 		} else {
