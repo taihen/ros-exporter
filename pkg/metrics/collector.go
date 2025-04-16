@@ -44,10 +44,10 @@ type MikrotikCollector struct {
 	interfaceRxDropsDesc   *prometheus.Desc
 	interfaceTxDropsDesc   *prometheus.Desc
 
-	// Disk
-	diskInfoDesc       *prometheus.Desc
-	diskTotalBytesDesc *prometheus.Desc
-	diskFreeBytesDesc  *prometheus.Desc
+	// Storage (from /system/resource)
+	storageTotalBytesDesc *prometheus.Desc
+	storageFreeBytesDesc  *prometheus.Desc
+	storageUsedBytesDesc  *prometheus.Desc
 
 	// BGP (Optional)
 	bgpPeerInfoDesc          *prometheus.Desc
@@ -174,24 +174,21 @@ func NewMikrotikCollector(client *mikrotik.Client, collectBGP, collectPPP bool) 
 			[]string{"name"},
 			nil,
 		),
-		// Disk Descriptions
-		diskInfoDesc: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "disk", "info"),
-			"Disk information (type, status).",
-			[]string{"name", "type", "status"},
-			nil,
+		// Storage Descriptions (from /system/resource)
+		storageTotalBytesDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "system", "storage_total_bytes"),
+			"Total system storage (HDD) size in bytes.",
+			nil, nil,
 		),
-		diskTotalBytesDesc: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "disk", "total_bytes"),
-			"Total size of the disk in bytes.",
-			[]string{"name"},
-			nil,
+		storageFreeBytesDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "system", "storage_free_bytes"),
+			"Free system storage (HDD) space in bytes.",
+			nil, nil,
 		),
-		diskFreeBytesDesc: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, "disk", "free_bytes"),
-			"Free space on the disk in bytes.",
-			[]string{"name"},
-			nil,
+		storageUsedBytesDesc: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "system", "storage_used_bytes"),
+			"Used system storage (HDD) space in bytes.",
+			nil, nil,
 		),
 	}
 
@@ -305,10 +302,10 @@ func (c *MikrotikCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.interfaceRxDropsDesc
 	ch <- c.interfaceTxDropsDesc
 
-	// Disk metrics
-	ch <- c.diskInfoDesc
-	ch <- c.diskTotalBytesDesc
-	ch <- c.diskFreeBytesDesc
+	// Storage metrics (from /system/resource)
+	ch <- c.storageTotalBytesDesc
+	ch <- c.storageFreeBytesDesc
+	ch <- c.storageUsedBytesDesc
 
 	// Optional BGP metrics
 	if c.collectBGP {
@@ -372,6 +369,10 @@ func (c *MikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(c.memoryUsageDesc, prometheus.GaugeValue, float64(systemRes.TotalMemory-systemRes.FreeMemory))
 		ch <- prometheus.MustNewConstMetric(c.totalMemoryDesc, prometheus.GaugeValue, float64(systemRes.TotalMemory))
 		ch <- prometheus.MustNewConstMetric(c.uptimeDesc, prometheus.GaugeValue, systemRes.Uptime.Seconds())
+		// Add storage metrics from SystemResource
+		ch <- prometheus.MustNewConstMetric(c.storageTotalBytesDesc, prometheus.GaugeValue, float64(systemRes.TotalHDDSpace))
+		ch <- prometheus.MustNewConstMetric(c.storageFreeBytesDesc, prometheus.GaugeValue, float64(systemRes.FreeHDDSpace))
+		ch <- prometheus.MustNewConstMetric(c.storageUsedBytesDesc, prometheus.GaugeValue, float64(systemRes.TotalHDDSpace-systemRes.FreeHDDSpace))
 	}
 
 	// Fetch Routerboard Info
@@ -424,25 +425,6 @@ func (c *MikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 		}
 	}
 
-	// Fetch Disk Stats
-	diskStats, diskErr := c.client.GetDiskStats()
-	if diskErr != nil {
-		log.Printf("ERROR: Failed to get disk stats from %s: %v", c.client.Address, diskErr)
-		if sysErr == nil && rbErr == nil && ifErr == nil { // Only mark as error if other scrapes were ok
-			lastScrapeError = 1.0
-		}
-	} else {
-		for _, disk := range diskStats {
-			// Send disk info metric
-			ch <- prometheus.MustNewConstMetric(c.diskInfoDesc, prometheus.GaugeValue, 1,
-				disk.Name, disk.Type, disk.Status,
-			)
-			// Send disk size metrics
-			ch <- prometheus.MustNewConstMetric(c.diskTotalBytesDesc, prometheus.GaugeValue, float64(disk.Size), disk.Name)
-			ch <- prometheus.MustNewConstMetric(c.diskFreeBytesDesc, prometheus.GaugeValue, float64(disk.FreeSpace), disk.Name)
-		}
-	}
-
 	// --- Optional BGP Metrics ---
 	if c.collectBGP {
 		var bgpStats []mikrotik.BGPPeerStat // Corrected type name here
@@ -487,8 +469,8 @@ func (c *MikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 			// Don't mark the whole scrape as failed, but record the error if others were ok
 			// Check BGP error status only if BGP collection was attempted
 			bgpCollectionSuccessful := !c.collectBGP || bgpErr == nil
-			diskCollectionSuccessful := diskErr == nil // Check if disk collection was successful
-			if sysErr == nil && rbErr == nil && ifErr == nil && bgpCollectionSuccessful && diskCollectionSuccessful {
+			// Note: Disk/Storage errors are now handled within the system resource check (sysErr)
+			if sysErr == nil && rbErr == nil && ifErr == nil && bgpCollectionSuccessful {
 				lastScrapeError = 1.0
 			}
 		} else {

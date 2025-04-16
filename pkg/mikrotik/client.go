@@ -88,10 +88,12 @@ type SystemResource struct {
 	Uptime       time.Duration
 	FreeMemory   uint64
 	TotalMemory  uint64
-	CPULoad      uint64
-	BoardName    string
-	Model        string
-	SerialNumber string
+	CPULoad       uint64
+	FreeHDDSpace  uint64 // Added for storage
+	TotalHDDSpace uint64 // Added for storage
+	BoardName     string
+	Model         string
+	SerialNumber  string
 }
 
 // Routerboard holds information about the routerboard hardware.
@@ -155,15 +157,6 @@ type PPPUserStat struct {
 	TxBytes   uint64
 }
 
-// DiskStat holds statistics for a single disk/storage device.
-type DiskStat struct {
-	Name      string
-	Type      string // e.g., disk, file, partition
-	Size      uint64
-	FreeSpace uint64
-	Status    string // e.g., connected, mounted, ejected
-}
-
 // GetSystemResources fetches system resource information from the router.
 func (c *Client) GetSystemResources() (*SystemResource, error) {
 	reply, err := c.Run("/system/resource/print")
@@ -196,12 +189,24 @@ func (c *Client) GetSystemResources() (*SystemResource, error) {
 		log.Printf("Warning: Could not parse cpu-load '%s': %v", res.Map["cpu-load"], err)
 	}
 
+	// Parse HDD space (reported in KiB, convert to Bytes)
+	freeHDDSpaceKiB, err := parseBytes(res.Map["free-hdd-space"])
+	if err != nil {
+		log.Printf("Warning: Could not parse free-hdd-space '%s': %v", res.Map["free-hdd-space"], err)
+	}
+	totalHDDSpaceKiB, err := parseBytes(res.Map["total-hdd-space"])
+	if err != nil {
+		log.Printf("Warning: Could not parse total-hdd-space '%s': %v", res.Map["total-hdd-space"], err)
+	}
+
 	return &SystemResource{
-		Uptime:       uptime,
-		FreeMemory:   freeMem,
-		TotalMemory:  totalMem,
-		CPULoad:      cpuLoad,
-		BoardName:    res.Map["board-name"],
+		Uptime:        uptime,
+		FreeMemory:    freeMem,
+		TotalMemory:   totalMem,
+		CPULoad:       cpuLoad,
+		FreeHDDSpace:  freeHDDSpaceKiB * 1024, // Convert KiB to Bytes
+		TotalHDDSpace: totalHDDSpaceKiB * 1024, // Convert KiB to Bytes
+		BoardName:     res.Map["board-name"],
 		Model:        res.Map["model"],
 		SerialNumber: res.Map["serial-number"],
 	}, nil
@@ -469,49 +474,5 @@ func (c *Client) GetInterfaceStats() ([]InterfaceStat, error) {
 	}
 
 	// Return the stats populated with traffic counters
-	return stats, nil
-}
-
-// GetDiskStats fetches statistics for all storage devices.
-func (c *Client) GetDiskStats() ([]DiskStat, error) {
-	reply, err := c.Run("/disk/print", "detail", "without-paging")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get disk details: %w", err)
-	}
-
-	stats := make([]DiskStat, 0, len(reply.Re))
-
-	for _, re := range reply.Re {
-		name := re.Map["name"]
-		if name == "" {
-			log.Printf("Warning: Skipping disk with empty name: %v", re.Map)
-			continue
-		}
-
-		size, err := parseBytes(re.Map["size"])
-		if err != nil {
-			log.Printf("Warning: Could not parse disk size '%s' for disk '%s': %v", re.Map["size"], name, err)
-		}
-
-		freeSpace, err := parseBytes(re.Map["free-space"])
-		if err != nil {
-			log.Printf("Warning: Could not parse disk free-space '%s' for disk '%s': %v", re.Map["free-space"], name, err)
-		}
-
-		stat := DiskStat{
-			Name:      name,
-			Type:      re.Map["type"],
-			Size:      size,
-			FreeSpace: freeSpace,
-			Status:    re.Map["status"],
-		}
-		stats = append(stats, stat)
-		log.Printf("DEBUG: Found disk: Name=%s, Type=%s, Size=%d, FreeSpace=%d, Status=%s", stat.Name, stat.Type, stat.Size, stat.FreeSpace, stat.Status)
-	}
-
-	if len(stats) == 0 {
-		log.Println("No disks found to monitor.")
-	}
-
 	return stats, nil
 }

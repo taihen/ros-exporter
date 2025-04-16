@@ -1,7 +1,7 @@
 # MikroTik RouterOS Prometheus Exporter (ros-exporter)
 
 > [!WARNING]
-> This exporter is under development, do not use until first version has bee released.
+> This exporter is under development, use with caution.
 
 A Prometheus exporter for MikroTik RouterOS devices.
 
@@ -193,6 +193,7 @@ List the key metrics exposed:
 
 #### Project / developer experience
 
+- Debug mode
 - Add unit/integration tests
 - Add developer example how to implement metrics collection
 
