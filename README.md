@@ -10,7 +10,7 @@ This exporter connects to MikroTik routers using the native API (via the `go-rou
 ## Features
 
 - Collects metrics for:
-  - System Resources (CPU, Memory, Uptime, Board Info) - **Always Enabled**
+  - System Resources (CPU, Memory, Storage, Uptime, Board Info) - **Always Enabled**
   - Interface Statistics (Traffic, Packets, Errors, Drops) - **Always Enabled**
     - PPP and PPPoE interfaces are automatically excluded from interface statistics
   - BGP Peer Status (State, Prefixes, Updates, Uptime) - **Optional**
@@ -75,6 +75,12 @@ Create a read-only user group and user on your MikroTik router:
 ```mikrotik
 /user group add name=prometheus policy=read,api
 /user add name=prometheus group=prometheus password=YOUR_STRONG_PASSWORD address=EXPORTER_IP_ADDRESS
+```
+
+Additionally there might be also a need to update **ip services** to allow access to API from EXPORTER_IP_ADDRESS:
+
+```
+/ip services print
 ```
 
 > [!IMPORTANT]
