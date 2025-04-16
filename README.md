@@ -180,11 +180,24 @@ List the key metrics exposed:
 
 ## TODO
 
+#### Daemon experience
+
 - Implement configuration via YAML/env vars
-- Improve PPP user byte counter collection (if possible via API)
 - Add better connection handling/pooling
+
+#### Project / developer experience
+
 - Add unit/integration tests
 - Add developer example how to implement metrics collection
+
+#### Collectors
+
+- power feed current and voltage
+- fans speed
+- cpu and ambient temperature
+- transceivers signal and temperature
+- ospf
+- wireless interfaces client count, tx and rx rate, ccq, noice floor and frequency
 
 ## License
 

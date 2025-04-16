@@ -155,6 +155,15 @@ type PPPUserStat struct {
 	TxBytes   uint64
 }
 
+// DiskStat holds statistics for a single disk/storage device.
+type DiskStat struct {
+	Name      string
+	Type      string // e.g., disk, file, partition
+	Size      uint64
+	FreeSpace uint64
+	Status    string // e.g., connected, mounted, ejected
+}
+
 // GetSystemResources fetches system resource information from the router.
 func (c *Client) GetSystemResources() (*SystemResource, error) {
 	reply, err := c.Run("/system/resource/print")
@@ -460,5 +469,49 @@ func (c *Client) GetInterfaceStats() ([]InterfaceStat, error) {
 	}
 
 	// Return the stats populated with traffic counters
+	return stats, nil
+}
+
+// GetDiskStats fetches statistics for all storage devices.
+func (c *Client) GetDiskStats() ([]DiskStat, error) {
+	reply, err := c.Run("/disk/print", "detail", "without-paging")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get disk details: %w", err)
+	}
+
+	stats := make([]DiskStat, 0, len(reply.Re))
+
+	for _, re := range reply.Re {
+		name := re.Map["name"]
+		if name == "" {
+			log.Printf("Warning: Skipping disk with empty name: %v", re.Map)
+			continue
+		}
+
+		size, err := parseBytes(re.Map["size"])
+		if err != nil {
+			log.Printf("Warning: Could not parse disk size '%s' for disk '%s': %v", re.Map["size"], name, err)
+		}
+
+		freeSpace, err := parseBytes(re.Map["free-space"])
+		if err != nil {
+			log.Printf("Warning: Could not parse disk free-space '%s' for disk '%s': %v", re.Map["free-space"], name, err)
+		}
+
+		stat := DiskStat{
+			Name:      name,
+			Type:      re.Map["type"],
+			Size:      size,
+			FreeSpace: freeSpace,
+			Status:    re.Map["status"],
+		}
+		stats = append(stats, stat)
+		log.Printf("DEBUG: Found disk: Name=%s, Type=%s, Size=%d, FreeSpace=%d, Status=%s", stat.Name, stat.Type, stat.Size, stat.FreeSpace, stat.Status)
+	}
+
+	if len(stats) == 0 {
+		log.Println("No disks found to monitor.")
+	}
+
 	return stats, nil
 }
