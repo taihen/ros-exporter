@@ -92,6 +92,7 @@ func handleMetricsRequest(w http.ResponseWriter, r *http.Request) {
 	port := query.Get("port") // Optional port parameter
 	collectBGPParam := query.Get("collect_bgp")
 	collectPPPParam := query.Get("collect_ppp")
+	collectWirelessParam := query.Get("collect_wireless") // Added wireless param
 
 	// --- Parameter Handling ---
 	if target == "" {
@@ -117,15 +118,16 @@ func handleMetricsRequest(w http.ResponseWriter, r *http.Request) {
 
 	collectBGP, _ := strconv.ParseBool(collectBGPParam)
 	collectPPP, _ := strconv.ParseBool(collectPPPParam)
+	collectWireless, _ := strconv.ParseBool(collectWirelessParam) // Added wireless parsing
 
-	log.Printf("Processing scrape request for address: %s, user: %s, collect_bgp: %t, collect_ppp: %t",
-		address, effectiveUser, collectBGP, collectPPP)
+	log.Printf("Processing scrape request for address: %s, user: %s, collect_bgp: %t, collect_ppp: %t, collect_wireless: %t",
+		address, effectiveUser, collectBGP, collectPPP, collectWireless) // Added wireless to log
 
 	// --- Client & Collector Setup ---
 	// Pass the potentially port-modified address to NewClient
 	client := mikrotik.NewClient(address, effectiveUser, password, *scrapeTimeout)
 	registry := prometheus.NewRegistry()
-	collector := metrics.NewMikrotikCollector(client, collectBGP, collectPPP)
+	collector := metrics.NewMikrotikCollector(client, collectBGP, collectPPP, collectWireless) // Added collectWireless arg
 	registry.MustRegister(collector)
 
 	// --- Serve Metrics ---

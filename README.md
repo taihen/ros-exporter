@@ -1,5 +1,9 @@
 # MikroTik RouterOS Prometheus Exporter (ros-exporter)
 
+[![Test](https://github.com/taihen/ros-exporter/actions/workflows/test.yml/badge.svg)](https://github.com/taihen/ppp-exporter/actions/workflows/test.yml)
+[![Release](https://github.com/taihen/ros-exporter/actions/workflows/release.yml/badge.svg)](https://github.com/taihen/ros-exporter/actions/workflows/release.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/taihen/ros-exporter)](https://goreportcard.com/report/github.com/taihen/ros-exporter)
+
 > [!WARNING]
 > This exporter is under development, use with caution.
 
@@ -78,9 +82,10 @@ Create a read-only user group and user on your MikroTik router:
 /user add name=prometheus group=prometheus password=YOUR_STRONG_PASSWORD address=EXPORTER_IP_ADDRESS
 ```
 
-Additionally there might be also a need to update **ip services** to allow access to API from EXPORTER_IP_ADDRESS:
+Additionally there might be also a need to update **ip services** to allow access to API from EXPORTER_IP_ADDRESS.
+Print current API service configuration and change it accordingly.
 
-```
+```mikrotik
 /ip services print
 ```
 
@@ -200,10 +205,10 @@ List the key metrics exposed:
 
 #### Collectors
 
-- transceivers signal and temperature
-- ospf
-- wireless interfaces client count, tx and rx rate, ccq, noice floor and frequency
-- interface speed
+- Transceivers signal and temperature
+- OSPF
+- Wireless interfaces client count, tx and rx rate, ccq, noice floor and frequency
+- Add Interface speed to interface collection ()
 
 ## License
 

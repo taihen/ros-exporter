@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"log"
+	"strconv" // Added import
 	"sync"
 	"time"
 
@@ -16,8 +17,9 @@ type MikrotikCollector struct {
 	client *mikrotik.Client
 
 	// Configuration flags
-	collectBGP bool
-	collectPPP bool
+	collectBGP      bool
+	collectPPP      bool
+	collectWireless bool
 
 	// Exporter health
 	upDesc              *prometheus.Desc
@@ -73,15 +75,28 @@ type MikrotikCollector struct {
 	pppUserUptimeDesc  *prometheus.Desc
 	// pppUserRxBytesDesc *prometheus.Desc // Removed as requested
 	// pppUserTxBytesDesc *prometheus.Desc // Removed as requested
+
+	// Wireless (Optional)
+	wirelessInterfaceInfoDesc         *prometheus.Desc
+	wirelessInterfaceSignalStrengthDesc *prometheus.Desc
+	wirelessInterfaceTxRateDesc       *prometheus.Desc
+	wirelessInterfaceRxRateDesc       *prometheus.Desc
+	wirelessClientInfoDesc            *prometheus.Desc
+	wirelessClientSignalStrengthDesc  *prometheus.Desc
+	wirelessClientTxCCQDesc           *prometheus.Desc
+	wirelessClientRxRateDesc          *prometheus.Desc // Note: Value is complex string
+	wirelessClientTxRateDesc          *prometheus.Desc // Note: Value is complex string
+	wirelessActiveClientsDesc         *prometheus.Desc
 }
 
 // NewMikrotikCollector creates a new collector instance.
-// collectBGP and collectPPP flags control optional metric groups.
-func NewMikrotikCollector(client *mikrotik.Client, collectBGP, collectPPP bool) *MikrotikCollector { //nolint:funlen // Okay to be long due to descriptor initialization
+// collectBGP, collectPPP, and collectWireless flags control optional metric groups.
+func NewMikrotikCollector(client *mikrotik.Client, collectBGP, collectPPP, collectWireless bool) *MikrotikCollector { //nolint:funlen // Okay to be long due to descriptor initialization
 	mc := &MikrotikCollector{
-		client:     client,
-		collectBGP: collectBGP,
-		collectPPP: collectPPP,
+		client:          client,
+		collectBGP:      collectBGP,
+		collectPPP:      collectPPP,
+		collectWireless: collectWireless,
 		upDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "up"),
 			"Was the last scrape of the MikroTik router successful.",
@@ -319,6 +334,63 @@ func NewMikrotikCollector(client *mikrotik.Client, collectBGP, collectPPP bool) 
 		// )
 	}
 
+	// Initialize Wireless descriptions only if enabled
+	if mc.collectWireless {
+		mc.wirelessInterfaceInfoDesc = prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "wireless_interface", "info"),
+			"Wireless interface information (1 = active/running).",
+			[]string{"name", "ssid", "frequency"}, // Frequency in MHz
+			nil,
+		)
+		mc.wirelessInterfaceSignalStrengthDesc = prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "wireless_interface", "signal_strength_dbm"),
+			"Wireless interface signal strength in dBm (primarily for station mode).",
+			[]string{"name"},
+			nil,
+		)
+		mc.wirelessInterfaceTxRateDesc = prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "wireless_interface", "transmit_rate_bps"),
+			"Wireless interface transmit rate in bits per second.",
+			[]string{"name"},
+			nil,
+		)
+		mc.wirelessInterfaceRxRateDesc = prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "wireless_interface", "receive_rate_bps"),
+			"Wireless interface receive rate in bits per second.",
+			[]string{"name"},
+			nil,
+		)
+		mc.wirelessClientInfoDesc = prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "wireless_client", "info"),
+			"Connected wireless client information (1 = connected).",
+			[]string{"interface", "mac_address", "uptime_text"}, // Uptime is string like "1h2m3s"
+			nil,
+		)
+		mc.wirelessClientSignalStrengthDesc = prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "wireless_client", "signal_strength_dbm"),
+			"Connected wireless client signal strength in dBm.",
+			[]string{"interface", "mac_address"},
+			nil,
+		)
+		mc.wirelessClientTxCCQDesc = prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "wireless_client", "transmit_ccq_percent"),
+			"Connected wireless client transmit CCQ (Client Connection Quality) in percent.",
+			[]string{"interface", "mac_address"},
+			nil,
+		)
+		// Note: RxRate and TxRate for clients are complex strings (e.g., "54Mbps-20MHz/1S")
+		// Exposing them directly might be less useful than CCQ/Signal.
+		// We could try parsing later if needed. For now, expose as info label or skip.
+		// mc.wirelessClientRxRateDesc = prometheus.NewDesc(...)
+		// mc.wirelessClientTxRateDesc = prometheus.NewDesc(...)
+		mc.wirelessActiveClientsDesc = prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "wireless_interface", "active_clients_count"),
+			"Number of active clients connected to a wireless interface (AP mode).",
+			[]string{"interface"},
+			nil,
+		)
+	}
+
 	return mc
 }
 
@@ -376,6 +448,20 @@ func (c *MikrotikCollector) Describe(ch chan<- *prometheus.Desc) {
 		// ch <- c.pppUserRxBytesDesc // Removed as requested
 		// ch <- c.pppUserTxBytesDesc // Removed as requested
 	}
+
+	// Optional Wireless metrics
+	if c.collectWireless {
+		ch <- c.wirelessInterfaceInfoDesc
+		ch <- c.wirelessInterfaceSignalStrengthDesc
+		ch <- c.wirelessInterfaceTxRateDesc
+		ch <- c.wirelessInterfaceRxRateDesc
+		ch <- c.wirelessClientInfoDesc
+		ch <- c.wirelessClientSignalStrengthDesc
+		ch <- c.wirelessClientTxCCQDesc
+		// ch <- c.wirelessClientRxRateDesc // Not implemented yet
+		// ch <- c.wirelessClientTxRateDesc // Not implemented yet
+		ch <- c.wirelessActiveClientsDesc
+	}
 }
 
 // Collect fetches metrics from the MikroTik router and sends them to the Prometheus channel.
@@ -390,6 +476,8 @@ func (c *MikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 	lastScrapeError := 0.0
 	var bgpErr error // Declare bgpErr here to make it accessible later
 	var healthErr error // Declare healthErr for health metrics
+	var pppErr error // Declare pppErr for PPP metrics
+	var wirelessErr error // Declare wirelessErr for wireless metrics
 
 	// Attempt connection first
 	if err := c.client.Connect(); err != nil {
@@ -559,14 +647,13 @@ func (c *MikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 
 	// --- Optional PPP Metrics ---
 	if c.collectPPP {
-		pppUsers, pppErr := c.client.GetPPPActiveUsers()
+		var pppUsers []mikrotik.PPPUserStat // Declare pppUsers here, corrected type
+		pppUsers, pppErr = c.client.GetPPPActiveUsers() // Assign to outer pppErr
 		if pppErr != nil {
 			log.Printf("ERROR: Failed to get PPP stats from %s: %v", c.client.Address, pppErr)
 			// Don't mark the whole scrape as failed, but record the error if others were ok
-			// Check BGP error status only if BGP collection was attempted
 			bgpCollectionSuccessful := !c.collectBGP || bgpErr == nil
-			healthCollectionSuccessful := healthErr == nil // Check if health collection had an error
-			// Note: Disk/Storage errors are now handled within the system resource check (sysErr)
+			healthCollectionSuccessful := healthErr == nil
 			if sysErr == nil && rbErr == nil && ifErr == nil && bgpCollectionSuccessful && healthCollectionSuccessful {
 				lastScrapeError = 1.0
 			}
@@ -580,6 +667,79 @@ func (c *MikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 				ch <- prometheus.MustNewConstMetric(c.pppUserUptimeDesc, prometheus.GaugeValue, user.Uptime.Seconds(), user.Name)
 				// ch <- prometheus.MustNewConstMetric(c.pppUserRxBytesDesc, prometheus.CounterValue, float64(user.RxBytes), user.Name) // Removed as requested
 				// ch <- prometheus.MustNewConstMetric(c.pppUserTxBytesDesc, prometheus.CounterValue, float64(user.TxBytes), user.Name) // Removed as requested
+			}
+		}
+	}
+
+	// --- Optional Wireless Metrics ---
+	if c.collectWireless {
+		// Fetch Wireless Interface Stats
+		wirelessInterfaces, wlIfErr := c.client.FetchWirelessInterfaces() // Call as method on client
+		if wlIfErr != nil {
+			log.Printf("ERROR: Failed to get Wireless Interface stats from %s: %v", c.client.Address, wlIfErr)
+			wirelessErr = wlIfErr // Store error
+			// Mark scrape error if other collections were okay
+			bgpOk := !c.collectBGP || bgpErr == nil
+			pppOk := !c.collectPPP || pppErr == nil
+			healthOk := healthErr == nil
+			if sysErr == nil && rbErr == nil && ifErr == nil && bgpOk && pppOk && healthOk {
+				lastScrapeError = 1.0
+			}
+		} else if wirelessInterfaces != nil { // Ensure it's not nil (might be nil if package disabled)
+			for _, iface := range wirelessInterfaces {
+				// Info metric (value 1 indicates data present)
+				ch <- prometheus.MustNewConstMetric(c.wirelessInterfaceInfoDesc, prometheus.GaugeValue, 1,
+					iface.Name, iface.SSID, strconv.Itoa(iface.Frequency),
+				)
+				// Only report signal strength if non-zero (common in station mode)
+				if iface.SignalStrength != 0 {
+					ch <- prometheus.MustNewConstMetric(c.wirelessInterfaceSignalStrengthDesc, prometheus.GaugeValue, float64(iface.SignalStrength), iface.Name)
+				}
+				// Report rates if non-zero
+				if iface.TxRate > 0 {
+					ch <- prometheus.MustNewConstMetric(c.wirelessInterfaceTxRateDesc, prometheus.GaugeValue, iface.TxRate, iface.Name)
+				}
+				if iface.RxRate > 0 {
+					ch <- prometheus.MustNewConstMetric(c.wirelessInterfaceRxRateDesc, prometheus.GaugeValue, iface.RxRate, iface.Name)
+				}
+			}
+		}
+
+		// Fetch Wireless Client Stats (AP Mode)
+		wirelessClients, wlClientErr := c.client.FetchWirelessClients() // Call as method on client
+		if wlClientErr != nil {
+			log.Printf("ERROR: Failed to get Wireless Client stats from %s: %v", c.client.Address, wlClientErr)
+			if wirelessErr == nil { // Only store the first wireless error encountered
+				wirelessErr = wlClientErr
+			}
+			// Mark scrape error if other collections were okay
+			bgpOk := !c.collectBGP || bgpErr == nil
+			pppOk := !c.collectPPP || pppErr == nil
+			healthOk := healthErr == nil
+			wlIfOk := wlIfErr == nil // Check if interface fetch was okay
+			if sysErr == nil && rbErr == nil && ifErr == nil && bgpOk && pppOk && healthOk && wlIfOk {
+				lastScrapeError = 1.0
+			}
+		} else if wirelessClients != nil { // Ensure it's not nil
+			clientCounts := make(map[string]int) // Map to count clients per interface
+			for _, client := range wirelessClients {
+				clientCounts[client.Interface]++ // Increment count for this interface
+
+				ch <- prometheus.MustNewConstMetric(c.wirelessClientInfoDesc, prometheus.GaugeValue, 1,
+					client.Interface, client.MacAddress, client.Uptime,
+				)
+				if client.SignalStrength != 0 {
+					ch <- prometheus.MustNewConstMetric(c.wirelessClientSignalStrengthDesc, prometheus.GaugeValue, float64(client.SignalStrength), client.Interface, client.MacAddress)
+				}
+				if client.TxCCQ != 0 {
+					ch <- prometheus.MustNewConstMetric(c.wirelessClientTxCCQDesc, prometheus.GaugeValue, float64(client.TxCCQ), client.Interface, client.MacAddress)
+				}
+				// Skipping client RxRate/TxRate for now due to complex string format
+			}
+
+			// Emit active client counts per interface
+			for ifaceName, count := range clientCounts {
+				ch <- prometheus.MustNewConstMetric(c.wirelessActiveClientsDesc, prometheus.GaugeValue, float64(count), ifaceName)
 			}
 		}
 	}

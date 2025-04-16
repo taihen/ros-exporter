@@ -83,6 +83,24 @@ func (c *Client) Run(cmd ...string) (*routeros.Reply, error) {
 	return reply, nil
 }
 
+// RunArgs executes a command with specific arguments on the MikroTik router.
+// Useful for commands like 'monitor' that take arguments differently.
+func (c *Client) RunArgs(args []string) (*routeros.Reply, error) {
+	if c.client == nil {
+		if err := c.Connect(); err != nil {
+			return nil, err
+		}
+	}
+
+	// Use the address stored in our struct for logging errors
+	reply, err := c.client.RunArgs(args)
+	if err != nil {
+		log.Printf("Error running command with args on %s (%v): %v", c.Address, args, err)
+		return nil, err
+	}
+	return reply, nil
+}
+
 // SystemResource holds information about system resources.
 type SystemResource struct {
 	Uptime       time.Duration
