@@ -11,7 +11,7 @@ import (
 
 const namespace = "mikrotik"
 
-// MikrotikCollector implements the prometheus.Collector interface.
+// prometheus.Collector interface.
 type MikrotikCollector struct {
 	client *mikrotik.Client
 
@@ -397,7 +397,7 @@ func (c *MikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 
 	// --- Optional BGP Metrics ---
 	if c.collectBGP {
-		var bgpStats []mikrotik.BGPPeerStat // Corrected type name here
+		var bgpStats []mikrotik.BGPPeerStat           // Corrected type name here
 		bgpStats, bgpErr = c.client.GetBGPPeerStats() // Assign to the outer bgpErr
 		if bgpErr != nil {
 			log.Printf("ERROR: Failed to get BGP stats from %s: %v", c.client.Address, bgpErr)
