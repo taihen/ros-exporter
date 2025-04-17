@@ -23,7 +23,7 @@ func (c *Client) GetBGPPeerStats() ([]BGPPeerStat, error) {
 		reply, err = c.Run(cmd...)
 	}
 	if err != nil {
-		if strings.Contains(err.Error(), "no such command") || strings.Contains(err.Error(), "disabled")) {
+		if strings.Contains(err.Error(), "no such command") || strings.Contains(err.Error(), "disabled") {
 			log.Printf("BGP package/feature might be disabled on %s. Skipping BGP metrics.", c.Address)
 			return []BGPPeerStat{}, nil
 		}
