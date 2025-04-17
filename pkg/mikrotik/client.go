@@ -353,8 +353,13 @@ func parseBool(boolStr string) bool {
 }
 
 func (c *Client) GetInterfaceStats() ([]InterfaceStat, error) {
-	initialReply, err := c.Run("/interface/print")
+	start := time.Now()
+	log.Printf("DEBUG: Starting initial interface list for %s", c.Address)
+	// Request only name and type to speed up initial interface list
+	initialReply, err := c.RunArgs([]string{"/interface/print", "without-paging", "=.proplist=name,type"})
+	log.Printf("DEBUG: Completed initial interface list for %s in %s", c.Address, time.Since(start))
 	if err != nil {
+		log.Printf("DEBUG: initial interface list failed for %s: %v", c.Address, err)
 		return nil, fmt.Errorf("failed to get initial interface names/types: %w", err)
 	}
 
@@ -418,14 +423,89 @@ func (c *Client) GetInterfaceStats() ([]InterfaceStat, error) {
 	log.Printf("DEBUG: Attempting to fetch stats for interfaces: %v", monitoredNames)
 
 	statsCmd := []string{"/interface/print", "stats", "without-paging"}
-	statsReply, statsErr := c.Run(statsCmd...)
+	statsReply, statsErr := c.RunArgs(statsCmd)
 
 	if statsErr != nil {
-		log.Printf("Warning: Failed to get interface traffic counters using '/interface/print stats' for %s: %v. Returning interface info without traffic counters.", c.Address, statsErr)
-		return stats, nil
-	}
-	if len(statsReply.Re) == 0 {
-		log.Printf("Warning: Received empty reply for '/interface/print stats' from %s. No traffic counters available.", c.Address)
+		log.Printf("Warning: Failed to get interface traffic counters using '/interface/print stats' for %s: %v. Attempting per-interface monitor-traffic fallback.", c.Address, statsErr)
+		for name, statPtr := range ifaceMap {
+			if statPtr == nil {
+				continue
+			}
+			args := []string{"/interface/monitor-traffic", "interface=" + name, "once", "without-paging", "=.proplist=rx-byte,tx-byte,rx-packet,tx-packet,rx-error,tx-error,rx-drop,tx-drop"}
+			monitorReply, err := c.RunArgs(args)
+			if err != nil {
+				log.Printf("Warning: monitor-traffic failed for interface %s: %v", name, err)
+				continue
+			}
+			if len(monitorReply.Re) == 0 {
+				log.Printf("Warning: monitor-traffic returned no data for interface %s", name)
+				continue
+			}
+			m := monitorReply.Re[0].Map
+			if v, ok := m["rx-byte"]; ok && v != "" {
+				statPtr.RxBytes, _ = parseBytes(v)
+			}
+			if v, ok := m["tx-byte"]; ok && v != "" {
+				statPtr.TxBytes, _ = parseBytes(v)
+			}
+			if v, ok := m["rx-packet"]; ok && v != "" {
+				statPtr.RxPackets, _ = parseBytes(v)
+			}
+			if v, ok := m["tx-packet"]; ok && v != "" {
+				statPtr.TxPackets, _ = parseBytes(v)
+			}
+			if v, ok := m["rx-error"]; ok && v != "" {
+				statPtr.RxErrors, _ = parseBytes(v)
+			}
+			if v, ok := m["tx-error"]; ok && v != "" {
+				statPtr.TxErrors, _ = parseBytes(v)
+			}
+			if v, ok := m["rx-drop"]; ok && v != "" {
+				statPtr.RxDrops, _ = parseBytes(v)
+			}
+			if v, ok := m["tx-drop"]; ok && v != "" {
+				statPtr.TxDrops, _ = parseBytes(v)
+			}
+		}
+		// Combined proplist fallback for stats
+		log.Printf("INFO: Combined /interface/print fallback for %s", c.Address)
+		combinedArgs := []string{"/interface/print", "without-paging", "=.proplist=name,rx-byte,tx-byte,rx-packet,tx-packet,rx-error,tx-error,rx-drop,tx-drop"}
+		startCombined := time.Now()
+		combinedReply, combinedErr := c.RunArgs(combinedArgs)
+		log.Printf("DEBUG: Completed combined interface list with stats for %s in %s", c.Address, time.Since(startCombined))
+		if combinedErr != nil {
+			log.Printf("Error: combined /interface/print fallback failed for %s: %v", c.Address, combinedErr)
+			return stats, nil
+		}
+		for _, re := range combinedReply.Re {
+			name := re.Map["name"]
+			if statPtr, ok := ifaceMap[name]; ok && statPtr != nil {
+				if v, ok := re.Map["rx-byte"]; ok && v != "" {
+					statPtr.RxBytes, _ = parseBytes(v)
+				}
+				if v, ok := re.Map["tx-byte"]; ok && v != "" {
+					statPtr.TxBytes, _ = parseBytes(v)
+				}
+				if v, ok := re.Map["rx-packet"]; ok && v != "" {
+					statPtr.RxPackets, _ = parseBytes(v)
+				}
+				if v, ok := re.Map["tx-packet"]; ok && v != "" {
+					statPtr.TxPackets, _ = parseBytes(v)
+				}
+				if v, ok := re.Map["rx-error"]; ok && v != "" {
+					statPtr.RxErrors, _ = parseBytes(v)
+				}
+				if v, ok := re.Map["tx-error"]; ok && v != "" {
+					statPtr.TxErrors, _ = parseBytes(v)
+				}
+				if v, ok := re.Map["rx-drop"]; ok && v != "" {
+					statPtr.RxDrops, _ = parseBytes(v)
+				}
+				if v, ok := re.Map["tx-drop"]; ok && v != "" {
+					statPtr.TxDrops, _ = parseBytes(v)
+				}
+			}
+		}
 		return stats, nil
 	}
 
