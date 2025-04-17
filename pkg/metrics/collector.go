@@ -2,7 +2,7 @@ package metrics
 
 import (
 	"log"
-	"strconv" // Added import
+	"strconv"
 	"sync"
 	"time"
 
@@ -12,30 +12,26 @@ import (
 
 const namespace = "mikrotik"
 
-// prometheus.Collector interface.
+// MikrotikCollector implements the prometheus.Collector interface.
 type MikrotikCollector struct {
 	client *mikrotik.Client
 
-	// Configuration flags
 	collectBGP      bool
 	collectPPP      bool
 	collectWireless bool
 
-	// Exporter health
 	upDesc              *prometheus.Desc
 	scrapeDurationDesc  *prometheus.Desc
 	lastScrapeErrorDesc *prometheus.Desc
 
 	mutex sync.Mutex
 
-	// System
 	cpuLoadDesc     *prometheus.Desc
 	memoryUsageDesc *prometheus.Desc
 	totalMemoryDesc *prometheus.Desc
 	uptimeDesc      *prometheus.Desc
 	boardInfoDesc   *prometheus.Desc
 
-	// Interface
 	interfaceInfoDesc      *prometheus.Desc
 	interfaceRxBytesDesc   *prometheus.Desc
 	interfaceTxBytesDesc   *prometheus.Desc
@@ -46,20 +42,17 @@ type MikrotikCollector struct {
 	interfaceRxDropsDesc   *prometheus.Desc
 	interfaceTxDropsDesc   *prometheus.Desc
 
-	// Storage (from /system/resource)
 	storageTotalBytesDesc *prometheus.Desc
 	storageFreeBytesDesc  *prometheus.Desc
 	storageUsedBytesDesc  *prometheus.Desc
 
-	// Health (Temperature, Voltage, etc.)
-	temperatureDesc       *prometheus.Desc
-	boardTemperatureDesc  *prometheus.Desc
-	voltageDesc           *prometheus.Desc
-	currentDesc           *prometheus.Desc // Optional, might not be present
-	powerConsumedDesc     *prometheus.Desc // Optional, might not be present
-	fanSpeedDesc          *prometheus.Desc // Optional, might not be present
+	temperatureDesc      *prometheus.Desc
+	boardTemperatureDesc *prometheus.Desc
+	voltageDesc          *prometheus.Desc
+	currentDesc          *prometheus.Desc
+	powerConsumedDesc    *prometheus.Desc
+	fanSpeedDesc         *prometheus.Desc
 
-	// BGP (Optional)
 	bgpPeerInfoDesc          *prometheus.Desc
 	bgpPeerStateDesc         *prometheus.Desc
 	bgpPeerUptimeDesc        *prometheus.Desc
@@ -69,29 +62,22 @@ type MikrotikCollector struct {
 	bgpPeerWithdrawsSentDesc *prometheus.Desc
 	bgpPeerWithdrawsRecvDesc *prometheus.Desc
 
-	// PPP (Optional)
 	pppActiveCountDesc *prometheus.Desc
 	pppUserInfoDesc    *prometheus.Desc
 	pppUserUptimeDesc  *prometheus.Desc
-	// pppUserRxBytesDesc *prometheus.Desc // Removed as requested
-	// pppUserTxBytesDesc *prometheus.Desc // Removed as requested
 
-	// Wireless (Optional)
-	wirelessInterfaceInfoDesc         *prometheus.Desc
+	wirelessInterfaceInfoDesc           *prometheus.Desc
 	wirelessInterfaceSignalStrengthDesc *prometheus.Desc
-	wirelessInterfaceTxRateDesc       *prometheus.Desc
-	wirelessInterfaceRxRateDesc       *prometheus.Desc
-	wirelessClientInfoDesc            *prometheus.Desc
-	wirelessClientSignalStrengthDesc  *prometheus.Desc
-	wirelessClientTxCCQDesc           *prometheus.Desc
-	wirelessClientRxRateDesc          *prometheus.Desc // Note: Value is complex string
-	wirelessClientTxRateDesc          *prometheus.Desc // Note: Value is complex string
-	wirelessActiveClientsDesc         *prometheus.Desc
+	wirelessInterfaceTxRateDesc         *prometheus.Desc
+	wirelessInterfaceRxRateDesc         *prometheus.Desc
+	wirelessClientInfoDesc              *prometheus.Desc
+	wirelessClientSignalStrengthDesc    *prometheus.Desc
+	wirelessClientTxCCQDesc             *prometheus.Desc
+	wirelessActiveClientsDesc           *prometheus.Desc
 }
 
-// NewMikrotikCollector creates a new collector instance.
-// collectBGP, collectPPP, and collectWireless flags control optional metric groups.
-func NewMikrotikCollector(client *mikrotik.Client, collectBGP, collectPPP, collectWireless bool) *MikrotikCollector { //nolint:funlen // Okay to be long due to descriptor initialization
+// NewMikrotikCollector initializes a new collector instance.
+func NewMikrotikCollector(client *mikrotik.Client, collectBGP, collectPPP, collectWireless bool) *MikrotikCollector {
 	mc := &MikrotikCollector{
 		client:          client,
 		collectBGP:      collectBGP,
@@ -115,7 +101,6 @@ func NewMikrotikCollector(client *mikrotik.Client, collectBGP, collectPPP, colle
 			nil,
 			nil,
 		),
-		// System Descriptions
 		cpuLoadDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "system", "cpu_load_percent"),
 			"Current CPU load percentage.",
@@ -142,7 +127,6 @@ func NewMikrotikCollector(client *mikrotik.Client, collectBGP, collectPPP, colle
 			[]string{"board_name", "model", "serial_number", "firmware_type", "factory_firmware", "current_firmware", "upgrade_firmware"},
 			nil,
 		),
-		// Interface Descriptions
 		interfaceInfoDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "interface", "info"),
 			"Interface information (admin status, running status).",
@@ -197,7 +181,6 @@ func NewMikrotikCollector(client *mikrotik.Client, collectBGP, collectPPP, colle
 			[]string{"name"},
 			nil,
 		),
-		// Storage Descriptions (from /system/resource)
 		storageTotalBytesDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "system", "storage_total_bytes"),
 			"Total system storage (HDD) size in bytes.",
@@ -213,11 +196,10 @@ func NewMikrotikCollector(client *mikrotik.Client, collectBGP, collectPPP, colle
 			"Used system storage (HDD) space in bytes.",
 			nil, nil,
 		),
-		// Health Descriptions
 		temperatureDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "health", "temperature_celsius"),
 			"System temperature (often CPU) in degrees Celsius.",
-			[]string{"sensor"}, // Add sensor label if needed (e.g., "cpu", "board")
+			[]string{"sensor"},
 			nil,
 		),
 		boardTemperatureDesc: prometheus.NewDesc(
@@ -243,12 +225,11 @@ func NewMikrotikCollector(client *mikrotik.Client, collectBGP, collectPPP, colle
 		fanSpeedDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "health", "fan_speed_rpm"),
 			"Fan speed in RPM (if available).",
-			[]string{"fan"}, // e.g., "fan1", "fan2"
+			[]string{"fan"},
 			nil,
 		),
 	}
 
-	// Initialize BGP descriptions only if enabled
 	if mc.collectBGP {
 		mc.bgpPeerInfoDesc = prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "bgp_peer", "info"),
@@ -300,7 +281,6 @@ func NewMikrotikCollector(client *mikrotik.Client, collectBGP, collectPPP, colle
 		)
 	}
 
-	// Initialize PPP descriptions only if enabled
 	if mc.collectPPP {
 		mc.pppActiveCountDesc = prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "ppp", "active_users_count"),
@@ -320,26 +300,13 @@ func NewMikrotikCollector(client *mikrotik.Client, collectBGP, collectPPP, colle
 			[]string{"name"},
 			nil,
 		)
-		// mc.pppUserRxBytesDesc = prometheus.NewDesc(
-		// 	prometheus.BuildFQName(namespace, "ppp_user", "receive_bytes_total"),
-		// 	"Total number of bytes received by the PPP user.",
-		// 	[]string{"name"},
-		// 	nil,
-		// )
-		// mc.pppUserTxBytesDesc = prometheus.NewDesc(
-		// 	prometheus.BuildFQName(namespace, "ppp_user", "transmit_bytes_total"),
-		// 	"Total number of bytes transmitted by the PPP user.",
-		// 	[]string{"name"},
-		// 	nil,
-		// )
 	}
 
-	// Initialize Wireless descriptions only if enabled
 	if mc.collectWireless {
 		mc.wirelessInterfaceInfoDesc = prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "wireless_interface", "info"),
-			"Wireless interface information (1 = active/running).",
-			[]string{"name", "ssid", "frequency"}, // Frequency in MHz
+			"Wireless interface information.",
+			[]string{"name", "ssid", "frequency"},
 			nil,
 		)
 		mc.wirelessInterfaceSignalStrengthDesc = prometheus.NewDesc(
@@ -363,7 +330,7 @@ func NewMikrotikCollector(client *mikrotik.Client, collectBGP, collectPPP, colle
 		mc.wirelessClientInfoDesc = prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "wireless_client", "info"),
 			"Connected wireless client information (1 = connected).",
-			[]string{"interface", "mac_address", "uptime_text"}, // Uptime is string like "1h2m3s"
+			[]string{"interface", "mac_address", "uptime_text"},
 			nil,
 		)
 		mc.wirelessClientSignalStrengthDesc = prometheus.NewDesc(
@@ -378,11 +345,6 @@ func NewMikrotikCollector(client *mikrotik.Client, collectBGP, collectPPP, colle
 			[]string{"interface", "mac_address"},
 			nil,
 		)
-		// Note: RxRate and TxRate for clients are complex strings (e.g., "54Mbps-20MHz/1S")
-		// Exposing them directly might be less useful than CCQ/Signal.
-		// We could try parsing later if needed. For now, expose as info label or skip.
-		// mc.wirelessClientRxRateDesc = prometheus.NewDesc(...)
-		// mc.wirelessClientTxRateDesc = prometheus.NewDesc(...)
 		mc.wirelessActiveClientsDesc = prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "wireless_interface", "active_clients_count"),
 			"Number of active clients connected to a wireless interface (AP mode).",
@@ -396,7 +358,6 @@ func NewMikrotikCollector(client *mikrotik.Client, collectBGP, collectPPP, colle
 
 // Describe sends the static descriptions of all metrics collected by this collector.
 func (c *MikrotikCollector) Describe(ch chan<- *prometheus.Desc) {
-	// Required metrics
 	ch <- c.upDesc
 	ch <- c.scrapeDurationDesc
 	ch <- c.lastScrapeErrorDesc
@@ -415,12 +376,10 @@ func (c *MikrotikCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.interfaceRxDropsDesc
 	ch <- c.interfaceTxDropsDesc
 
-	// Storage metrics (from /system/resource)
 	ch <- c.storageTotalBytesDesc
 	ch <- c.storageFreeBytesDesc
 	ch <- c.storageUsedBytesDesc
 
-	// Health metrics
 	ch <- c.temperatureDesc
 	ch <- c.boardTemperatureDesc
 	ch <- c.voltageDesc
@@ -428,7 +387,6 @@ func (c *MikrotikCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.powerConsumedDesc
 	ch <- c.fanSpeedDesc
 
-	// Optional BGP metrics
 	if c.collectBGP {
 		ch <- c.bgpPeerInfoDesc
 		ch <- c.bgpPeerStateDesc
@@ -440,16 +398,12 @@ func (c *MikrotikCollector) Describe(ch chan<- *prometheus.Desc) {
 		ch <- c.bgpPeerWithdrawsRecvDesc
 	}
 
-	// Optional PPP metrics
 	if c.collectPPP {
 		ch <- c.pppActiveCountDesc
 		ch <- c.pppUserInfoDesc
 		ch <- c.pppUserUptimeDesc
-		// ch <- c.pppUserRxBytesDesc // Removed as requested
-		// ch <- c.pppUserTxBytesDesc // Removed as requested
 	}
 
-	// Optional Wireless metrics
 	if c.collectWireless {
 		ch <- c.wirelessInterfaceInfoDesc
 		ch <- c.wirelessInterfaceSignalStrengthDesc
@@ -458,8 +412,6 @@ func (c *MikrotikCollector) Describe(ch chan<- *prometheus.Desc) {
 		ch <- c.wirelessClientInfoDesc
 		ch <- c.wirelessClientSignalStrengthDesc
 		ch <- c.wirelessClientTxCCQDesc
-		// ch <- c.wirelessClientRxRateDesc // Not implemented yet
-		// ch <- c.wirelessClientTxRateDesc // Not implemented yet
 		ch <- c.wirelessActiveClientsDesc
 	}
 }
@@ -470,16 +422,15 @@ func (c *MikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 	defer c.mutex.Unlock()
 
 	start := time.Now()
-	log.Printf("Starting scrape for router %s (BGP: %t, PPP: %t)", c.client.Address, c.collectBGP, c.collectPPP)
+	log.Printf("Starting scrape for router %s", c.client.Address)
 
 	up := 1.0
 	lastScrapeError := 0.0
-	var bgpErr error // Declare bgpErr here to make it accessible later
-	var healthErr error // Declare healthErr for health metrics
-	var pppErr error // Declare pppErr for PPP metrics
-	var wirelessErr error // Declare wirelessErr for wireless metrics
+	var bgpErr error
+	var healthErr error
+	var pppErr error
+	var wirelessErr error
 
-	// Attempt connection first
 	if err := c.client.Connect(); err != nil {
 		log.Printf("ERROR: Failed to connect to router %s: %v", c.client.Address, err)
 		up = 0.0
@@ -488,42 +439,33 @@ func (c *MikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(c.upDesc, prometheus.GaugeValue, up)
 		ch <- prometheus.MustNewConstMetric(c.scrapeDurationDesc, prometheus.GaugeValue, duration)
 		ch <- prometheus.MustNewConstMetric(c.lastScrapeErrorDesc, prometheus.GaugeValue, lastScrapeError)
-		// Note: We don't call client.Close() here as the connection failed.
-		return // Stop collection if connection failed
+		return
 	}
-	// Connection successful, proceed with metric collection.
-	// The client connection will be closed by the handler in main.go after ServeHTTP finishes.
 
-	// --- Required Metrics ---
-
-	// Fetch System Resources
 	systemRes, sysErr := c.client.GetSystemResources()
 	if sysErr != nil {
 		log.Printf("ERROR: Failed to get system resources from %s: %v", c.client.Address, sysErr)
-		// Don't mark 'up' as 0 here, as connection was successful, but record the error.
 		lastScrapeError = 1.0
 	} else {
 		ch <- prometheus.MustNewConstMetric(c.cpuLoadDesc, prometheus.GaugeValue, float64(systemRes.CPULoad))
 		ch <- prometheus.MustNewConstMetric(c.memoryUsageDesc, prometheus.GaugeValue, float64(systemRes.TotalMemory-systemRes.FreeMemory))
 		ch <- prometheus.MustNewConstMetric(c.totalMemoryDesc, prometheus.GaugeValue, float64(systemRes.TotalMemory))
 		ch <- prometheus.MustNewConstMetric(c.uptimeDesc, prometheus.GaugeValue, systemRes.Uptime.Seconds())
-		// Add storage metrics from SystemResource
 		ch <- prometheus.MustNewConstMetric(c.storageTotalBytesDesc, prometheus.GaugeValue, float64(systemRes.TotalHDDSpace))
 		ch <- prometheus.MustNewConstMetric(c.storageFreeBytesDesc, prometheus.GaugeValue, float64(systemRes.FreeHDDSpace))
 		ch <- prometheus.MustNewConstMetric(c.storageUsedBytesDesc, prometheus.GaugeValue, float64(systemRes.TotalHDDSpace-systemRes.FreeHDDSpace))
 	}
 
-	// Fetch Routerboard Info
 	routerboard, rbErr := c.client.GetRouterboard()
 	if rbErr != nil {
 		log.Printf("ERROR: Failed to get routerboard info from %s: %v", c.client.Address, rbErr)
-		if sysErr == nil { // Only set scrape error if system resource scrape was ok
+		if sysErr == nil {
 			lastScrapeError = 1.0
 		}
-		if sysErr == nil { // Send info metric with empty labels if fetch failed but systemRes was okay
+		if sysErr == nil {
 			ch <- prometheus.MustNewConstMetric(c.boardInfoDesc, prometheus.GaugeValue, 1, "", "", "", "", "", "", "")
 		}
-	} else if sysErr == nil { // Only send board info if system resource scrape was also successful
+	} else if sysErr == nil {
 		ch <- prometheus.MustNewConstMetric(c.boardInfoDesc, prometheus.GaugeValue, 1,
 			routerboard.BoardName,
 			routerboard.Model,
@@ -535,11 +477,10 @@ func (c *MikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 		)
 	}
 
-	// Fetch Interface Stats
 	interfaceStats, ifErr := c.client.GetInterfaceStats()
 	if ifErr != nil {
 		log.Printf("ERROR: Failed to get interface stats from %s: %v", c.client.Address, ifErr)
-		if sysErr == nil && rbErr == nil { // Only mark as error if other scrapes were ok
+		if sysErr == nil && rbErr == nil {
 			lastScrapeError = 1.0
 		}
 	} else {
@@ -563,59 +504,40 @@ func (c *MikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 		}
 	}
 
-	// --- Health Metrics ---
-	health, healthErr := c.client.GetSystemHealth() // Assign to outer healthErr
+	health, healthErr := c.client.GetSystemHealth()
 	if healthErr != nil {
-		// This error is already logged within GetSystemHealth if it's serious
 		log.Printf("ERROR: Failed to get system health from %s: %v", c.client.Address, healthErr)
-		// Only mark scrape as error if other essential scrapes were okay
 		if sysErr == nil && rbErr == nil && ifErr == nil {
 			lastScrapeError = 1.0
 		}
-	} else if health != nil { // Check if health is not nil (it could be nil if not supported)
-		// Use the generic temperatureDesc with a label for the primary temp
-		// Check if the temperature value is non-zero, indicating it was likely found and parsed.
+	} else if health != nil {
 		if health.Temperature != 0 {
-			ch <- prometheus.MustNewConstMetric(c.temperatureDesc, prometheus.GaugeValue, health.Temperature, "cpu") // Label as "cpu"
+			ch <- prometheus.MustNewConstMetric(c.temperatureDesc, prometheus.GaugeValue, health.Temperature, "cpu")
 		}
-		// Use the specific boardTemperatureDesc if available and different from main temp
 		if health.BoardTemperature != 0 && health.BoardTemperature != health.Temperature {
-			// Option 1: Use specific metric
-			// ch <- prometheus.MustNewConstMetric(c.boardTemperatureDesc, prometheus.GaugeValue, health.BoardTemperature)
-			// Option 2: Use generic metric with different label
 			ch <- prometheus.MustNewConstMetric(c.temperatureDesc, prometheus.GaugeValue, health.BoardTemperature, "board")
 		}
-		// Check if voltage is non-zero
 		if health.Voltage != 0 {
 			ch <- prometheus.MustNewConstMetric(c.voltageDesc, prometheus.GaugeValue, health.Voltage)
 		}
-		// Check if current is non-zero
 		if health.Current != 0 {
 			ch <- prometheus.MustNewConstMetric(c.currentDesc, prometheus.GaugeValue, health.Current)
 		}
-		// Check if power consumed is non-zero
 		if health.PowerConsumed != 0 {
 			ch <- prometheus.MustNewConstMetric(c.powerConsumedDesc, prometheus.GaugeValue, health.PowerConsumed)
 		}
-		// Example for fan speed (assuming only fan1 for now)
-		// Check if fan speed is non-zero
 		if health.FanSpeed != 0 {
 			ch <- prometheus.MustNewConstMetric(c.fanSpeedDesc, prometheus.GaugeValue, float64(health.FanSpeed), "fan1")
 		}
-		// Add logic for other fans (fan2, etc.) if needed
 	} else {
-		// health == nil means GetSystemHealth returned nil, nil (likely not supported)
 		log.Printf("Info: System health metrics not available or not supported on %s.", c.client.Address)
 	}
 
-
-	// --- Optional BGP Metrics ---
 	if c.collectBGP {
-		var bgpStats []mikrotik.BGPPeerStat // Corrected type name here
-		bgpStats, bgpErr = c.client.GetBGPPeerStats() // Assign to the outer bgpErr
+		var bgpStats []mikrotik.BGPPeerStat
+		bgpStats, bgpErr = c.client.GetBGPPeerStats()
 		if bgpErr != nil {
 			log.Printf("ERROR: Failed to get BGP stats from %s: %v", c.client.Address, bgpErr)
-			// Don't mark the whole scrape as failed, but record the error if others were ok
 			if sysErr == nil && rbErr == nil && ifErr == nil {
 				lastScrapeError = 1.0
 			}
@@ -645,13 +567,11 @@ func (c *MikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 		}
 	}
 
-	// --- Optional PPP Metrics ---
 	if c.collectPPP {
-		var pppUsers []mikrotik.PPPUserStat // Declare pppUsers here, corrected type
-		pppUsers, pppErr = c.client.GetPPPActiveUsers() // Assign to outer pppErr
+		var pppUsers []mikrotik.PPPUserStat
+		pppUsers, pppErr = c.client.GetPPPActiveUsers()
 		if pppErr != nil {
 			log.Printf("ERROR: Failed to get PPP stats from %s: %v", c.client.Address, pppErr)
-			// Don't mark the whole scrape as failed, but record the error if others were ok
 			bgpCollectionSuccessful := !c.collectBGP || bgpErr == nil
 			healthCollectionSuccessful := healthErr == nil
 			if sysErr == nil && rbErr == nil && ifErr == nil && bgpCollectionSuccessful && healthCollectionSuccessful {
@@ -665,37 +585,29 @@ func (c *MikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 					user.Name, user.Service, user.CallerID, user.Address, user.UptimeStr,
 				)
 				ch <- prometheus.MustNewConstMetric(c.pppUserUptimeDesc, prometheus.GaugeValue, user.Uptime.Seconds(), user.Name)
-				// ch <- prometheus.MustNewConstMetric(c.pppUserRxBytesDesc, prometheus.CounterValue, float64(user.RxBytes), user.Name) // Removed as requested
-				// ch <- prometheus.MustNewConstMetric(c.pppUserTxBytesDesc, prometheus.CounterValue, float64(user.TxBytes), user.Name) // Removed as requested
 			}
 		}
 	}
 
-	// --- Optional Wireless Metrics ---
 	if c.collectWireless {
-		// Fetch Wireless Interface Stats
-		wirelessInterfaces, wlIfErr := c.client.FetchWirelessInterfaces() // Call as method on client
+		wirelessInterfaces, wlIfErr := c.client.FetchWirelessInterfaces()
 		if wlIfErr != nil {
 			log.Printf("ERROR: Failed to get Wireless Interface stats from %s: %v", c.client.Address, wlIfErr)
-			wirelessErr = wlIfErr // Store error
-			// Mark scrape error if other collections were okay
+			wirelessErr = wlIfErr
 			bgpOk := !c.collectBGP || bgpErr == nil
 			pppOk := !c.collectPPP || pppErr == nil
 			healthOk := healthErr == nil
 			if sysErr == nil && rbErr == nil && ifErr == nil && bgpOk && pppOk && healthOk {
 				lastScrapeError = 1.0
 			}
-		} else if wirelessInterfaces != nil { // Ensure it's not nil (might be nil if package disabled)
+		} else if wirelessInterfaces != nil {
 			for _, iface := range wirelessInterfaces {
-				// Info metric (value 1 indicates data present)
 				ch <- prometheus.MustNewConstMetric(c.wirelessInterfaceInfoDesc, prometheus.GaugeValue, 1,
 					iface.Name, iface.SSID, strconv.Itoa(iface.Frequency),
 				)
-				// Only report signal strength if non-zero (common in station mode)
 				if iface.SignalStrength != 0 {
 					ch <- prometheus.MustNewConstMetric(c.wirelessInterfaceSignalStrengthDesc, prometheus.GaugeValue, float64(iface.SignalStrength), iface.Name)
 				}
-				// Report rates if non-zero
 				if iface.TxRate > 0 {
 					ch <- prometheus.MustNewConstMetric(c.wirelessInterfaceTxRateDesc, prometheus.GaugeValue, iface.TxRate, iface.Name)
 				}
@@ -705,25 +617,23 @@ func (c *MikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 			}
 		}
 
-		// Fetch Wireless Client Stats (AP Mode)
-		wirelessClients, wlClientErr := c.client.FetchWirelessClients() // Call as method on client
+		wirelessClients, wlClientErr := c.client.FetchWirelessClients()
 		if wlClientErr != nil {
 			log.Printf("ERROR: Failed to get Wireless Client stats from %s: %v", c.client.Address, wlClientErr)
-			if wirelessErr == nil { // Only store the first wireless error encountered
+			if wirelessErr == nil {
 				wirelessErr = wlClientErr
 			}
-			// Mark scrape error if other collections were okay
 			bgpOk := !c.collectBGP || bgpErr == nil
 			pppOk := !c.collectPPP || pppErr == nil
 			healthOk := healthErr == nil
-			wlIfOk := wlIfErr == nil // Check if interface fetch was okay
+			wlIfOk := wlIfErr == nil
 			if sysErr == nil && rbErr == nil && ifErr == nil && bgpOk && pppOk && healthOk && wlIfOk {
 				lastScrapeError = 1.0
 			}
-		} else if wirelessClients != nil { // Ensure it's not nil
-			clientCounts := make(map[string]int) // Map to count clients per interface
+		} else if wirelessClients != nil {
+			clientCounts := make(map[string]int)
 			for _, client := range wirelessClients {
-				clientCounts[client.Interface]++ // Increment count for this interface
+				clientCounts[client.Interface]++
 
 				ch <- prometheus.MustNewConstMetric(c.wirelessClientInfoDesc, prometheus.GaugeValue, 1,
 					client.Interface, client.MacAddress, client.Uptime,
@@ -734,19 +644,16 @@ func (c *MikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 				if client.TxCCQ != 0 {
 					ch <- prometheus.MustNewConstMetric(c.wirelessClientTxCCQDesc, prometheus.GaugeValue, float64(client.TxCCQ), client.Interface, client.MacAddress)
 				}
-				// Skipping client RxRate/TxRate for now due to complex string format
 			}
 
-			// Emit active client counts per interface
 			for ifaceName, count := range clientCounts {
 				ch <- prometheus.MustNewConstMetric(c.wirelessActiveClientsDesc, prometheus.GaugeValue, float64(count), ifaceName)
 			}
 		}
 	}
 
-	// --- Final Health Reporting ---
 	duration := time.Since(start).Seconds()
-	log.Printf("Scrape finished for router %s in %.2f seconds (up: %.0f, error: %.0f)", c.client.Address, duration, up, lastScrapeError)
+	log.Printf("Scrape finished for router %s in %.2f seconds", c.client.Address, duration)
 
 	ch <- prometheus.MustNewConstMetric(c.upDesc, prometheus.GaugeValue, up)
 	ch <- prometheus.MustNewConstMetric(c.scrapeDurationDesc, prometheus.GaugeValue, duration)

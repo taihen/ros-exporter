@@ -24,7 +24,7 @@ const defaultAPIPort = "8728" // Define default port locally for logging if need
 var (
 	listenAddressFlag = flag.String("web.listen-address", ":9483", "Address to listen on for web interface and telemetry.")
 	metricsPathFlag   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
-	scrapeTimeout     = flag.Duration("scrape.timeout", 10*time.Second, "Timeout for scraping a target.")
+	scrapeTimeout     = flag.Duration("scrape.timeout", mikrotik.DefaultTimeout, "Timeout for scraping a target.")
 )
 
 func main() {

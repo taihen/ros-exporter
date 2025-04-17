@@ -211,10 +211,11 @@ List the key metrics exposed:
 
 #### Collectors
 
-- Transceivers signal and temperature
-- OSPF
-- Wireless interfaces client count, tx and rx rate, ccq, noice floor and frequency
-- Add Interface speed to interface collection ()
+- feature: transceivers signal and temperature
+- feature: OSPF
+- feature: wireless interfaces client count, tx and rx rate, ccq, noice floor and frequency
+- fix: add Interface speed to mikrotik_interface_
+- fix: add hostname as name to mikrotik_system_info labels
 
 ## License
 
