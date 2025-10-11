@@ -1,0 +1,14 @@
+{
+  "name": "ros-exporter dev",
+  "dockerfile": "Dockerfile",
+  "context": "..",
+  "forwardPorts": [9483],
+  "postCreateCommand": "go mod download",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.Go"
+      ]
+    }
+  }
+}
