@@ -22,7 +22,7 @@ jobs:
       #  run: |
       #    gcc -o myapp src/main.c -Wl,--rpath=$HOME/glibc-2.31/lib
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           # Fetch all history and tags for semantic-release
           fetch-depth: 0
@@ -56,7 +56,7 @@ jobs:
           sha256sum * > checksums.txt
           cd ..  # Go back to the root directory
       - name: Semantic Release
-        uses: cycjimmy/semantic-release-action@v4
+        uses: cycjimmy/semantic-release-action@v5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # Configuration is now handled by .releaserc.json

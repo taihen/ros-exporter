@@ -4,17 +4,17 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net" // Import net package for SplitHostPort
+	"net"
 	"strconv"
 	"strings"
 	"time"
 
-	"gopkg.in/routeros.v2"
+	"github.com/go-routeros/routeros/v3"
 )
 
 const defaultMikrotikAPIPort = "8728"
+const DefaultTimeout = 10 * time.Second
 
-// Client holds the connection details and client instance for a MikroTik router.
 type Client struct {
 	Address  string
 	Username string
@@ -23,10 +23,9 @@ type Client struct {
 	client   *routeros.Client
 }
 
-// NewClient creates a new MikroTik client configuration.
 func NewClient(address, username, password string, timeout time.Duration) *Client {
 	if timeout <= 0 {
-		timeout = 10 * time.Second // Default timeout
+		timeout = DefaultTimeout
 	}
 	return &Client{
 		Address:  address,
@@ -36,37 +35,31 @@ func NewClient(address, username, password string, timeout time.Duration) *Clien
 	}
 }
 
-// Connect establishes a connection to the MikroTik router.
 func (c *Client) Connect() error {
 	addr := c.Address
 	_, _, err := net.SplitHostPort(addr)
 	if err != nil {
 		addr = net.JoinHostPort(addr, defaultMikrotikAPIPort)
-		log.Printf("Port not specified for %s, using default: %s", c.Address, addr)
 	}
 
 	log.Printf("Connecting to MikroTik router at %s with timeout %s...", addr, c.Timeout)
 	client, err := routeros.DialTimeout(addr, c.Username, c.Password, c.Timeout)
 	if err != nil {
-		log.Printf("Error dialing MikroTik router %s (timeout %s): %v", addr, c.Timeout, err)
+		log.Printf("Error dialing MikroTik router %s: %v", addr, err)
 		return err
 	}
 	c.client = client
-	log.Printf("Successfully connected to MikroTik router %s", addr)
 	return nil
 }
 
-// Close terminates the connection to the MikroTik router.
 func (c *Client) Close() {
 	if c.client != nil {
-		// Use the address stored in our struct for logging closure
 		log.Printf("Closing connection to MikroTik router %s", c.Address)
 		c.client.Close()
 		c.client = nil
 	}
 }
 
-// Run executes a command on the MikroTik router and returns the reply.
 func (c *Client) Run(cmd ...string) (*routeros.Reply, error) {
 	if c.client == nil {
 		if err := c.Connect(); err != nil {
@@ -74,27 +67,77 @@ func (c *Client) Run(cmd ...string) (*routeros.Reply, error) {
 		}
 	}
 
-	// Use the address stored in our struct for logging errors
-	reply, err := c.client.Run(cmd...)
-	if err != nil {
-		log.Printf("Error running command on %s (%v): %v", c.Address, cmd, err)
+	replyCh := make(chan *routeros.Reply, 1)
+	errCh := make(chan error, 1)
+
+	go func() {
+		reply, err := c.client.Run(cmd...)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		replyCh <- reply
+	}()
+
+	select {
+	case reply := <-replyCh:
+		return reply, nil
+	case err := <-errCh:
+		log.Printf("Error running command on %s: %v", c.Address, err)
+		c.Close()
 		return nil, err
+	case <-time.After(c.Timeout):
+		log.Printf("Timeout running command on %s", c.Address)
+		c.Close()
+		return nil, fmt.Errorf("command timeout after %s", c.Timeout)
 	}
-	return reply, nil
 }
 
-// SystemResource holds information about system resources.
+func (c *Client) RunArgs(args []string) (*routeros.Reply, error) {
+	if c.client == nil {
+		if err := c.Connect(); err != nil {
+			return nil, err
+		}
+	}
+
+	replyCh := make(chan *routeros.Reply, 1)
+	errCh := make(chan error, 1)
+
+	go func() {
+		reply, err := c.client.RunArgs(args)
+		if err != nil {
+			errCh <- err
+			return
+		}
+		replyCh <- reply
+	}()
+
+	select {
+	case reply := <-replyCh:
+		return reply, nil
+	case err := <-errCh:
+		log.Printf("Error running command with args on %s: %v", c.Address, err)
+		c.Close()
+		return nil, err
+	case <-time.After(c.Timeout):
+		log.Printf("Timeout running command with args on %s", c.Address)
+		c.Close()
+		return nil, fmt.Errorf("command timeout after %s", c.Timeout)
+	}
+}
+
 type SystemResource struct {
-	Uptime       time.Duration
-	FreeMemory   uint64
-	TotalMemory  uint64
-	CPULoad      uint64
-	BoardName    string
-	Model        string
-	SerialNumber string
+	Uptime        time.Duration
+	FreeMemory    uint64
+	TotalMemory   uint64
+	CPULoad       uint64
+	FreeHDDSpace  uint64
+	TotalHDDSpace uint64
+	BoardName     string
+	Model         string
+	SerialNumber  string
 }
 
-// Routerboard holds information about the routerboard hardware.
 type Routerboard struct {
 	BoardName       string
 	Model           string
@@ -105,7 +148,6 @@ type Routerboard struct {
 	UpgradeFirmware string
 }
 
-// InterfaceStat holds statistics for a single network interface.
 type InterfaceStat struct {
 	Name       string
 	Type       string
@@ -123,8 +165,6 @@ type InterfaceStat struct {
 	TxDrops    uint64
 }
 
-// BGPPeerStat holds statistics for a single BGP peer.
-// Fetched using /routing/bgp/peer/print with .proplist
 type BGPPeerStat struct {
 	Name          string
 	Instance      string
@@ -143,7 +183,6 @@ type BGPPeerStat struct {
 	Disabled      bool
 }
 
-// PPPUserStat holds statistics for a single active PPP user session.
 type PPPUserStat struct {
 	Name      string
 	Service   string
@@ -155,7 +194,15 @@ type PPPUserStat struct {
 	TxBytes   uint64
 }
 
-// GetSystemResources fetches system resource information from the router.
+type SystemHealth struct {
+	Temperature      float64
+	BoardTemperature float64
+	Voltage          float64
+	Current          float64
+	PowerConsumed    float64
+	FanSpeed         uint64
+}
+
 func (c *Client) GetSystemResources() (*SystemResource, error) {
 	reply, err := c.Run("/system/resource/print")
 	if err != nil {
@@ -187,18 +234,28 @@ func (c *Client) GetSystemResources() (*SystemResource, error) {
 		log.Printf("Warning: Could not parse cpu-load '%s': %v", res.Map["cpu-load"], err)
 	}
 
+	freeHDDSpaceKiB, err := parseBytes(res.Map["free-hdd-space"])
+	if err != nil {
+		log.Printf("Warning: Could not parse free-hdd-space '%s': %v", res.Map["free-hdd-space"], err)
+	}
+	totalHDDSpaceKiB, err := parseBytes(res.Map["total-hdd-space"])
+	if err != nil {
+		log.Printf("Warning: Could not parse total-hdd-space '%s': %v", res.Map["total-hdd-space"], err)
+	}
+
 	return &SystemResource{
-		Uptime:       uptime,
-		FreeMemory:   freeMem,
-		TotalMemory:  totalMem,
-		CPULoad:      cpuLoad,
-		BoardName:    res.Map["board-name"],
-		Model:        res.Map["model"],
-		SerialNumber: res.Map["serial-number"],
+		Uptime:        uptime,
+		FreeMemory:    freeMem,
+		TotalMemory:   totalMem,
+		CPULoad:       cpuLoad,
+		FreeHDDSpace:  freeHDDSpaceKiB * 1024,
+		TotalHDDSpace: totalHDDSpaceKiB * 1024,
+		BoardName:     res.Map["board-name"],
+		Model:         res.Map["model"],
+		SerialNumber:  res.Map["serial-number"],
 	}, nil
 }
 
-// GetRouterboard fetches routerboard hardware information.
 func (c *Client) GetRouterboard() (*Routerboard, error) {
 	reply, err := c.Run("/system/routerboard/print")
 	if err != nil {
@@ -221,8 +278,6 @@ func (c *Client) GetRouterboard() (*Routerboard, error) {
 	}, nil
 }
 
-// --- Helper Functions ---
-
 func parseMikrotikDuration(durationStr string) (time.Duration, error) {
 	if durationStr == "" {
 		return 0, errors.New("empty duration string")
@@ -233,7 +288,7 @@ func parseMikrotikDuration(durationStr string) (time.Duration, error) {
 	var unit rune
 
 	for _, r := range durationStr {
-		if r >= '0' && r <= '9' || r == '.' { // Allow decimal point for seconds potentially
+		if r >= '0' && r <= '9' || r == '.' {
 			currentVal.WriteRune(r)
 		} else {
 			unit = r
@@ -244,15 +299,13 @@ func parseMikrotikDuration(durationStr string) (time.Duration, error) {
 
 			var val int64
 			var err error
-			// Try parsing as float first for seconds
 			if unit == 's' {
 				fVal, fErr := strconv.ParseFloat(valStr, 64)
 				if fErr == nil {
 					totalDuration += time.Duration(fVal * float64(time.Second))
 					currentVal.Reset()
-					continue // Skip normal integer parsing for 's' if float parse worked
+					continue
 				}
-				// Fallback to integer parsing if float fails
 			}
 
 			val, err = strconv.ParseInt(valStr, 10, 64)
@@ -299,47 +352,46 @@ func parseBool(boolStr string) bool {
 	return strings.ToLower(boolStr) == "true"
 }
 
-// GetInterfaceStats fetches statistics for all interfaces, excluding PPP and PPPoE interfaces.
 func (c *Client) GetInterfaceStats() ([]InterfaceStat, error) {
-	reply, err := c.Run("/interface/print", "detail", "without-paging")
+	start := time.Now()
+	log.Printf("DEBUG: Starting initial interface list for %s", c.Address)
+	// Request only name and type to speed up initial interface list
+	initialReply, err := c.RunArgs([]string{"/interface/print", "without-paging", "=.proplist=name,type"})
+	log.Printf("DEBUG: Completed initial interface list for %s in %s", c.Address, time.Since(start))
 	if err != nil {
-		return nil, fmt.Errorf("failed to get interface details: %w", err)
+		log.Printf("DEBUG: initial interface list failed for %s: %v", c.Address, err)
+		return nil, fmt.Errorf("failed to get initial interface names/types: %w", err)
 	}
 
-	stats := make([]InterfaceStat, 0, len(reply.Re))
+	stats := make([]InterfaceStat, 0, len(initialReply.Re))
 	ifaceMap := make(map[string]*InterfaceStat)
 
-	for _, re := range reply.Re {
+	for _, re := range initialReply.Re {
 		name := re.Map["name"]
 		if name == "" {
 			log.Printf("Warning: Skipping interface with empty name: %v", re.Map)
 			continue
 		}
 
-		// Skip PPP and PPPoE interfaces
 		ifaceType := re.Map["type"]
 		if strings.Contains(strings.ToLower(ifaceType), "ppp") ||
-		   strings.Contains(strings.ToLower(ifaceType), "pppoe") ||
-		   strings.Contains(strings.ToLower(name), "ppp") ||
-		   strings.Contains(strings.ToLower(name), "pppoe") {
+			strings.Contains(strings.ToLower(ifaceType), "pppoe") ||
+			strings.Contains(strings.ToLower(name), "ppp") ||
+			strings.Contains(strings.ToLower(name), "pppoe") {
 			log.Printf("Skipping PPP/PPPoE interface: %s (type: %s)", name, ifaceType)
 			continue
 		}
 
 		stat := InterfaceStat{
-			Name:       name,
-			Type:       ifaceType,
-			Comment:    re.Map["comment"],
-			MACAddress: re.Map["mac-address"],
-			Running:    parseBool(re.Map["running"]),
-			Disabled:   parseBool(re.Map["disabled"]),
+			Name: name,
+			Type: ifaceType,
 		}
 		stats = append(stats, stat)
 		ifaceMap[name] = &stats[len(stats)-1]
 	}
 
 	if len(stats) == 0 {
-		log.Println("No interfaces found to monitor traffic for.")
+		log.Println("No non-PPP/PPPoE interfaces found to monitor traffic for.")
 		return stats, nil
 	}
 
@@ -347,45 +399,135 @@ func (c *Client) GetInterfaceStats() ([]InterfaceStat, error) {
 	for _, s := range stats {
 		interfaceNames = append(interfaceNames, s.Name)
 	}
-	// Debug: Print all available fields for interfaces
-	log.Printf("DEBUG: Interface names to monitor: %v", interfaceNames)
 
-	// Try to get interface stats directly from interface print stats command
+	detailReply, detailErr := c.Run("/interface/print", "detail", "without-paging")
+	if detailErr != nil {
+		log.Printf("Warning: Failed to get detailed interface info for %s: %v. Proceeding without comment/mac/status.", c.Address, detailErr)
+	} else {
+		log.Printf("Successfully got detailed interface info for %s", c.Address)
+		for _, re := range detailReply.Re {
+			name := re.Map["name"]
+			if statPtr, ok := ifaceMap[name]; ok && statPtr != nil {
+				statPtr.Comment = re.Map["comment"]
+				statPtr.MACAddress = re.Map["mac-address"]
+				statPtr.Running = parseBool(re.Map["running"])
+				statPtr.Disabled = parseBool(re.Map["disabled"])
+			}
+		}
+	}
+
+	monitoredNames := make([]string, 0, len(ifaceMap))
+	for name := range ifaceMap {
+		monitoredNames = append(monitoredNames, name)
+	}
+	log.Printf("DEBUG: Attempting to fetch stats for interfaces: %v", monitoredNames)
+
 	statsCmd := []string{"/interface/print", "stats", "without-paging"}
-	statsReply, statsErr := c.Run(statsCmd...)
+	statsReply, statsErr := c.RunArgs(statsCmd)
 
-	// If getting stats failed, log a warning and return the basic stats (without traffic counters)
-	if statsErr != nil || len(statsReply.Re) == 0 {
-		log.Printf("Warning: Failed to get interface traffic counters using '/interface/print stats' for %s: %v. Returning basic interface info only.", c.Address, statsErr)
-		// Returning basic stats (name, type, status) collected earlier
+	if statsErr != nil {
+		log.Printf("Warning: Failed to get interface traffic counters using '/interface/print stats' for %s: %v. Attempting per-interface monitor-traffic fallback.", c.Address, statsErr)
+		for name, statPtr := range ifaceMap {
+			if statPtr == nil {
+				continue
+			}
+			args := []string{"/interface/monitor-traffic", "interface=" + name, "once", "without-paging", "=.proplist=rx-byte,tx-byte,rx-packet,tx-packet,rx-error,tx-error,rx-drop,tx-drop"}
+			monitorReply, err := c.RunArgs(args)
+			if err != nil {
+				log.Printf("Warning: monitor-traffic failed for interface %s: %v", name, err)
+				continue
+			}
+			if len(monitorReply.Re) == 0 {
+				log.Printf("Warning: monitor-traffic returned no data for interface %s", name)
+				continue
+			}
+			m := monitorReply.Re[0].Map
+			if v, ok := m["rx-byte"]; ok && v != "" {
+				statPtr.RxBytes, _ = parseBytes(v)
+			}
+			if v, ok := m["tx-byte"]; ok && v != "" {
+				statPtr.TxBytes, _ = parseBytes(v)
+			}
+			if v, ok := m["rx-packet"]; ok && v != "" {
+				statPtr.RxPackets, _ = parseBytes(v)
+			}
+			if v, ok := m["tx-packet"]; ok && v != "" {
+				statPtr.TxPackets, _ = parseBytes(v)
+			}
+			if v, ok := m["rx-error"]; ok && v != "" {
+				statPtr.RxErrors, _ = parseBytes(v)
+			}
+			if v, ok := m["tx-error"]; ok && v != "" {
+				statPtr.TxErrors, _ = parseBytes(v)
+			}
+			if v, ok := m["rx-drop"]; ok && v != "" {
+				statPtr.RxDrops, _ = parseBytes(v)
+			}
+			if v, ok := m["tx-drop"]; ok && v != "" {
+				statPtr.TxDrops, _ = parseBytes(v)
+			}
+		}
+		// Combined proplist fallback for stats
+		log.Printf("INFO: Combined /interface/print fallback for %s", c.Address)
+		combinedArgs := []string{"/interface/print", "without-paging", "=.proplist=name,rx-byte,tx-byte,rx-packet,tx-packet,rx-error,tx-error,rx-drop,tx-drop"}
+		startCombined := time.Now()
+		combinedReply, combinedErr := c.RunArgs(combinedArgs)
+		log.Printf("DEBUG: Completed combined interface list with stats for %s in %s", c.Address, time.Since(startCombined))
+		if combinedErr != nil {
+			log.Printf("Error: combined /interface/print fallback failed for %s: %v", c.Address, combinedErr)
+			return stats, nil
+		}
+		for _, re := range combinedReply.Re {
+			name := re.Map["name"]
+			if statPtr, ok := ifaceMap[name]; ok && statPtr != nil {
+				if v, ok := re.Map["rx-byte"]; ok && v != "" {
+					statPtr.RxBytes, _ = parseBytes(v)
+				}
+				if v, ok := re.Map["tx-byte"]; ok && v != "" {
+					statPtr.TxBytes, _ = parseBytes(v)
+				}
+				if v, ok := re.Map["rx-packet"]; ok && v != "" {
+					statPtr.RxPackets, _ = parseBytes(v)
+				}
+				if v, ok := re.Map["tx-packet"]; ok && v != "" {
+					statPtr.TxPackets, _ = parseBytes(v)
+				}
+				if v, ok := re.Map["rx-error"]; ok && v != "" {
+					statPtr.RxErrors, _ = parseBytes(v)
+				}
+				if v, ok := re.Map["tx-error"]; ok && v != "" {
+					statPtr.TxErrors, _ = parseBytes(v)
+				}
+				if v, ok := re.Map["rx-drop"]; ok && v != "" {
+					statPtr.RxDrops, _ = parseBytes(v)
+				}
+				if v, ok := re.Map["tx-drop"]; ok && v != "" {
+					statPtr.TxDrops, _ = parseBytes(v)
+				}
+			}
+		}
 		return stats, nil
 	}
 
-	// If successful, process the statsReply
-	log.Printf("Successfully got interface stats using '/interface/print stats'")
-	// Debug: Print all available fields for interface stats
-	for _, re := range statsReply.Re {
-		log.Printf("DEBUG: Interface stats fields available for %s: %v", re.Map["name"], re.Map)
+	log.Printf("Successfully got interface stats reply using '/interface/print stats' from %s", c.Address)
+	if len(statsReply.Re) > 0 {
+		log.Printf("DEBUG: Sample stats fields available for %s: %v", statsReply.Re[0].Map["name"], statsReply.Re[0].Map)
 	}
 
-	// Process interface stats from print stats command
-	// Add defer/recover to catch potential panics during processing
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("ERROR: Recovered from panic while processing interface stats for %s: %v", c.Address, r)
-			// Optionally, you could add more context here, like the specific interface being processed if possible
 		}
 	}()
 
 	for _, re := range statsReply.Re {
 		name := re.Map["name"]
 		stat, ok := ifaceMap[name]
-		if !ok || stat == nil { // Add explicit nil check for stat
+		if !ok || stat == nil {
 			log.Printf("Warning: Skipping interface '%s' from stats reply because it's not in the initial map or stat is nil.", name)
-			continue // Skip interfaces we're not tracking or if stat is nil
+			continue
 		}
 
-		// Try different field names for rx/tx bytes
 		rxBytesFields := []string{"rx-byte", "rx-bytes", "bytes-in"}
 		for _, field := range rxBytesFields {
 			if rxBytesStr, ok := re.Map[field]; ok && rxBytesStr != "" {
@@ -459,6 +601,72 @@ func (c *Client) GetInterfaceStats() ([]InterfaceStat, error) {
 		}
 	}
 
-	// Return the stats populated with traffic counters
 	return stats, nil
+}
+
+func (c *Client) GetSystemHealth() (*SystemHealth, error) {
+	reply, err := c.Run("/system/health/print")
+	if err != nil {
+		if strings.Contains(err.Error(), "no such command") || strings.Contains(err.Error(), "unknown command name") {
+			log.Printf("Info: /system/health/print command not found on %s. Temperature monitoring might not be supported.", c.Address)
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get system health: %w", err)
+	}
+
+	if len(reply.Re) == 0 {
+		log.Printf("Warning: No system health data received from %s.", c.Address)
+		return nil, nil
+	}
+	healthData := reply.Re[0]
+
+	parseFloat := func(key string) float64 {
+		valStr := healthData.Map[key]
+		if valStr == "" {
+			return 0
+		}
+		valStr = strings.TrimRight(valStr, "CVW RPM")
+		val, err := strconv.ParseFloat(valStr, 64)
+		if err != nil {
+			log.Printf("Warning: Could not parse health value for key '%s' ('%s') on %s: %v", key, healthData.Map[key], c.Address, err)
+			return 0
+		}
+		return val
+	}
+
+	parseUint := func(key string) uint64 {
+		valStr := healthData.Map[key]
+		if valStr == "" {
+			return 0
+		}
+		valStr = strings.TrimRight(valStr, " RPM")
+		val, err := strconv.ParseUint(valStr, 10, 64)
+		if err != nil {
+			log.Printf("Warning: Could not parse health value for key '%s' ('%s') on %s: %v", key, healthData.Map[key], c.Address, err)
+			return 0
+		}
+		return val
+	}
+
+	temp := parseFloat("temperature")
+	boardTemp := parseFloat("board-temperature")
+	if boardTemp == 0 {
+		boardTemp = parseFloat("cpu-temperature")
+	}
+	if temp == 0 && boardTemp != 0 && healthData.Map["temperature"] == "" && healthData.Map["cpu-temperature"] != "" {
+		temp = boardTemp
+	}
+
+	health := &SystemHealth{
+		Temperature:      temp,
+		BoardTemperature: boardTemp,
+		Voltage:          parseFloat("voltage"),
+		Current:          parseFloat("current"),
+		PowerConsumed:    parseFloat("power-consumption"),
+		FanSpeed:         parseUint("fan1-speed"),
+	}
+
+	log.Printf("Debug: Parsed health data for %s: %+v", c.Address, health)
+
+	return health, nil
 }

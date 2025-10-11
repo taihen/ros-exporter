@@ -1,7 +1,11 @@
 # MikroTik RouterOS Prometheus Exporter (ros-exporter)
 
+[![Test](https://github.com/taihen/ros-exporter/actions/workflows/test.yml/badge.svg)](https://github.com/taihen/ppp-exporter/actions/workflows/test.yml)
+[![Release](https://github.com/taihen/ros-exporter/actions/workflows/release.yml/badge.svg)](https://github.com/taihen/ros-exporter/actions/workflows/release.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/taihen/ros-exporter)](https://goreportcard.com/report/github.com/taihen/ros-exporter)
+
 > [!WARNING]
-> This exporter is under development, do not use until first version has bee released.
+> This exporter is under development, use with caution.
 
 A Prometheus exporter for MikroTik RouterOS devices.
 
@@ -10,7 +14,8 @@ This exporter connects to MikroTik routers using the native API (via the `go-rou
 ## Features
 
 - Collects metrics for:
-  - System Resources (CPU, Memory, Uptime, Board Info) - **Always Enabled**
+  - System Resources (CPU, Memory, Storage, Uptime, Board Info) - **Always Enabled**
+  - System Health (Current and power consumption, fan speed and temperature) - **Always Enabled**x
   - Interface Statistics (Traffic, Packets, Errors, Drops) - **Always Enabled**
     - PPP and PPPoE interfaces are automatically excluded from interface statistics
   - BGP Peer Status (State, Prefixes, Updates, Uptime) - **Optional**
@@ -68,6 +73,12 @@ go build -o ros-exporter ./cmd/ros-exporter
 - `-web.telemetry-path`: Path for metrics endpoint (default: `/metrics`).
 - `-scrape.timeout`: Timeout for scraping a target router (default: `10s`).
 
+### Testing
+
+To test base system go the exporter URL and add example target `http://<exporter-address>:9483/metrics?target=<router-address>`.
+
+To test optional feature, add the parameter `feature=true` to URL parameter. In example of `collect_wireless`: `http://<exporter-address>:9483/metrics?target=<router-address>&collect_wireless=true`
+
 ### MikroTik Configuration
 
 Create a read-only user group and user on your MikroTik router:
@@ -75,6 +86,13 @@ Create a read-only user group and user on your MikroTik router:
 ```mikrotik
 /user group add name=prometheus policy=read,api
 /user add name=prometheus group=prometheus password=YOUR_STRONG_PASSWORD address=EXPORTER_IP_ADDRESS
+```
+
+Additionally there might be also a need to update **ip services** to allow access to API from EXPORTER_IP_ADDRESS.
+Print current API service configuration and change it accordingly.
+
+```mikrotik
+/ip services print
 ```
 
 > [!IMPORTANT]
@@ -180,11 +198,24 @@ List the key metrics exposed:
 
 ## TODO
 
+#### Daemon experience
+
 - Implement configuration via YAML/env vars
-- Improve PPP user byte counter collection (if possible via API)
 - Add better connection handling/pooling
+
+#### Project / developer experience
+
+- Debug mode
 - Add unit/integration tests
 - Add developer example how to implement metrics collection
+
+#### Collectors
+
+- feature: transceivers signal and temperature
+- feature: OSPF
+- feature: wireless interfaces client count, tx and rx rate, ccq, noice floor and frequency
+- fix: add Interface speed to mikrotik_interface_
+- fix: add hostname as name to mikrotik_system_info labels
 
 ## License
 
