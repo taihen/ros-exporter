@@ -10,7 +10,7 @@ COPY pkg/ ./pkg/
 
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /ros-exporter ./cmd/ros-exporter
 
-FROM gcr.io/distroless/static-debian12 AS final
+FROM ghcr.io/taihen/base-image:v2025.10.09 As final
 
 WORKDIR /bin/
 
