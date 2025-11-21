@@ -22,7 +22,7 @@ jobs:
       #  run: |
       #    gcc -o myapp src/main.c -Wl,--rpath=$HOME/glibc-2.31/lib
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           # Fetch all history and tags for semantic-release
           fetch-depth: 0
