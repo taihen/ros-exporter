@@ -1,6 +1,6 @@
 module github.com/taihen/ros-exporter
 
-go 1.24.2
+go 1.24
 
 require (
 	github.com/go-routeros/routeros/v3 v3.0.1
