@@ -13,9 +13,10 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.21'
+          go-version-file: 'go.mod'
+          cache: true
       - name: Install dependencies
-        run: go get -v ./...
+        run: go mod download
       - name: Build
         run: go build -v ./...
       - name: Test

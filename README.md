@@ -28,7 +28,7 @@ This exporter connects to MikroTik routers using the native API (via the `go-rou
 
 ## Requirements
 
-- Go (version 1.18+ recommended)
+- Go 1.24+ required
 - MikroTik RouterOS v6.48 or later (tested with both v6.x and v7.x API features)
 - A dedicated read-only user on the MikroTik router for the exporter
 
