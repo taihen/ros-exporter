@@ -4,14 +4,12 @@ import (
 	"fmt"
 	"log"
 	"strconv"
-	"strings"
 )
 
-// GetPPPActiveUsers fetches statistics for all active PPP users.
 func (c *Client) GetPPPActiveUsers() ([]PPPUserStat, error) {
 	reply, err := c.Run("/ppp/active/print", "without-paging")
 	if err != nil {
-		if strings.Contains(err.Error(), "no such command") || strings.Contains(err.Error(), "disabled") {
+		if isUnsupportedCommand(err) {
 			log.Printf("PPP feature might be disabled on %s. Skipping PPP metrics.", c.Address)
 			return []PPPUserStat{}, nil
 		}
@@ -19,11 +17,9 @@ func (c *Client) GetPPPActiveUsers() ([]PPPUserStat, error) {
 	}
 
 	stats := make([]PPPUserStat, 0, len(reply.Re))
-
 	for _, re := range reply.Re {
 		name := re.Map["name"]
 		if name == "" {
-			log.Printf("Skipping PPP user with empty name: %v", re.Map)
 			continue
 		}
 
@@ -39,7 +35,6 @@ func (c *Client) GetPPPActiveUsers() ([]PPPUserStat, error) {
 				rxBytes = bytes
 			}
 		}
-
 		txBytes := uint64(0)
 		if value, ok := re.Map["bytes-out"]; ok && value != "" {
 			if bytes, err := strconv.ParseUint(value, 10, 64); err == nil {
@@ -47,7 +42,7 @@ func (c *Client) GetPPPActiveUsers() ([]PPPUserStat, error) {
 			}
 		}
 
-		stat := PPPUserStat{
+		stats = append(stats, PPPUserStat{
 			Name:      name,
 			Service:   re.Map["service"],
 			CallerID:  re.Map["caller-id"],
@@ -56,9 +51,7 @@ func (c *Client) GetPPPActiveUsers() ([]PPPUserStat, error) {
 			UptimeStr: re.Map["uptime"],
 			RxBytes:   rxBytes,
 			TxBytes:   txBytes,
-		}
-		stats = append(stats, stat)
+		})
 	}
-
 	return stats, nil
 }
