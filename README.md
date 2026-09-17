@@ -1,11 +1,8 @@
 # MikroTik RouterOS Prometheus Exporter (ros-exporter)
 
-[![Test](https://github.com/taihen/ros-exporter/actions/workflows/test.yml/badge.svg)](https://github.com/taihen/ppp-exporter/actions/workflows/test.yml)
+[![Test](https://github.com/taihen/ros-exporter/actions/workflows/test.yml/badge.svg)](https://github.com/taihen/ros-exporter/actions/workflows/test.yml)
 [![Release](https://github.com/taihen/ros-exporter/actions/workflows/release.yml/badge.svg)](https://github.com/taihen/ros-exporter/actions/workflows/release.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/taihen/ros-exporter)](https://goreportcard.com/report/github.com/taihen/ros-exporter)
-
-> [!WARNING]
-> This exporter is under development, use with caution.
 
 A Prometheus exporter for MikroTik RouterOS devices.
 
@@ -13,52 +10,38 @@ This exporter connects to MikroTik routers using the native API (via the `go-rou
 
 ## Features
 
-- Collects metrics for:
-  - System Resources (CPU, Memory, Storage, Uptime, Board Info) - **Always Enabled**
-  - System Health (Current and power consumption, fan speed and temperature) - **Always Enabled**x
-  - Interface Statistics (Traffic, Packets, Errors, Drops) - **Always Enabled**
-    - PPP and PPPoE interfaces are automatically excluded from interface statistics
-  - BGP Peer Status (State, Prefixes, Updates, Uptime) - **Optional**
-  - Active PPP Users (Count, User Info, Uptime) - **Optional**
-- Exposes metrics via HTTP on `/metrics` (default port 9483)
-- Target router and optional metric collection are specified via scrape configuration in Prometheus (using URL parameters)
-- Exporter health metrics (`mikrotik_up`, `mikrotik_scrape_duration_seconds`, `mikrotik_last_scrape_error`) - **Always Enabled**
-- Configurable listen address, metrics path, and scrape timeout via command-line flags
-- Graceful shutdown handling
+- System resources (CPU, memory, storage, uptime, board info) — always on
+- System health (temperature, board temperature, voltage, current, power, fan)
+- Interface stats (traffic, packets, errors, drops, admin state, speed, duplex)
+- Optional: BGP, PPP (incl. RX/TX bytes), wireless (legacy + wifiwave2/`/interface/wifi`), OSPF, transceiver optics
+- Multi-target `/metrics?target=...` (default port `9483`)
+- Single scrape deadline (`-scrape.timeout`), connection concurrency limit
+- Status metrics: connected vs scrape success vs per-collector error
+- Process health: `/-/healthy`, `/-/ready`, `/-/metrics` (Go/process collectors)
 
 ## Requirements
 
-- Go 1.24+ required
-- MikroTik RouterOS v6.48 or later (tested with both v6.x and v7.x API features)
-- A dedicated read-only user on the MikroTik router for the exporter
+- Go 1.25+
+- MikroTik RouterOS v6.48 or later (tested paths for v6.x and v7.x)
+- A dedicated read-only API user on each router
 
-## RouterOS Version Compatibility
+## Breaking changes since v1.4.0
 
-- **RouterOS 7.x**:
-  - Uses the newer API path (`/routing/bgp/peer/print`) for BGP data collection
-  - BGP peer uptime is available in the `uptime` field
-  - Standard field names are used for BGP metrics and interface statistics
+| Change | Impact |
+|--------|--------|
+| Removed `uptime_text` label from PPP and wireless client info metrics | Series IDs change; use `*_uptime_seconds` instead |
+| BGP peer info label `instance` renamed to `routing_instance` | Avoids clash with Prometheus `instance` |
+| `mikrotik_up` means **API connected**, not full scrape success | Prefer `mikrotik_scrape_success` / `mikrotik_last_scrape_error` for completeness |
+| New metrics: `mikrotik_connected`, `mikrotik_scrape_success`, `mikrotik_collector_error`, `mikrotik_collector_supported` | Update dashboards/alerts |
 
-- **RouterOS 6.x**:
-  - Uses the older API path (`/ip/bgp/peer/print`) for BGP data collection
-  - In RouterOS 6.48, BGP peer uptime might be in the `established-for` field instead of `uptime`
-  - Field names for BGP metrics and interface statistics might be different in RouterOS 6.48
-  - The exporter tries multiple possible field names for each metric to find the correct one
-  - Multiple fallback methods for interface statistics collection:
-    - First tries `/interface/monitor-traffic` with all interfaces
-    - If that fails, tries `/interface/print stats`
-    - If that fails, tries `/interface/ethernet/print stats`
-    - If that fails, tries to monitor each interface individually
-  - Debug logging is available to identify which fields and methods are being used
-
-The exporter automatically detects the RouterOS version and uses the appropriate API paths and field names for data collection. It also handles differences in field names and formats between RouterOS versions, making it compatible with both RouterOS 6.x and 7.x.
+Existing alert `up{job="ros_exporter"} * mikrotik_up` still works for reachability. Add a second alert on `mikrotik_last_scrape_error == 1` for partial failures. See [docs/ALERTS.md](docs/ALERTS.md).
 
 ## Getting Started
 
 ### Building
 
 ```bash
-go build -o ros-exporter ./cmd/ros-exporter
+go build -ldflags="-X main.version=dev -X main.commit=$(git rev-parse --short HEAD)" -o ros-exporter ./cmd/ros-exporter
 ```
 
 ### Running
@@ -69,153 +52,103 @@ go build -o ros-exporter ./cmd/ros-exporter
 
 **Flags:**
 
-- `-web.listen-address`: Address to listen on (default: `:9483`).
-- `-web.telemetry-path`: Path for metrics endpoint (default: `/metrics`).
-- `-scrape.timeout`: Timeout for scraping a target router (default: `10s`).
+- `-web.listen-address`: Listen address (default `:9483`)
+- `-web.telemetry-path`: Target metrics path (default `/metrics`)
+- `-scrape.timeout`: Budget for the **entire** scrape of one target (default `10s`)
+- `-scrape.max-concurrent`: Max concurrent RouterOS API connections (default `25`)
+- `-version`: Print version and exit
 
-### Testing
+### Endpoints
 
-To test base system go the exporter URL and add example target `http://<exporter-address>:9483/metrics?target=<router-address>`.
+| Path | Purpose |
+|------|---------|
+| `/metrics?target=HOST` | Per-target RouterOS metrics |
+| `/-/metrics` | Exporter process / Go metrics |
+| `/-/healthy` | Liveness |
+| `/-/ready` | Readiness |
 
-To test optional feature, add the parameter `feature=true` to URL parameter. In example of `collect_wireless`: `http://<exporter-address>:9483/metrics?target=<router-address>&collect_wireless=true`
+Optional query params: `user`, `password`, `port`, `collect_bgp`, `collect_ppp`, `collect_wireless`, `collect_ospf`, `collect_optics`.
 
 ### MikroTik Configuration
-
-Create a read-only user group and user on your MikroTik router:
 
 ```mikrotik
 /user group add name=prometheus policy=read,api
 /user add name=prometheus group=prometheus password=YOUR_STRONG_PASSWORD address=EXPORTER_IP_ADDRESS
 ```
 
-Additionally there might be also a need to update **ip services** to allow access to API from EXPORTER_IP_ADDRESS.
-Print current API service configuration and change it accordingly.
-
-```mikrotik
-/ip services print
-```
-
-> [!IMPORTANT]
-> Replace `YOUR_STRONG_PASSWORD` with a secure password and EXPORTER_IP_ADDRESS
-> with the IP address of the exporter itself.
+Allow API (`/ip service`) from the exporter host.
 
 ### Prometheus Configuration
-
-Add the following job to your `prometheus.yml`:
 
 ```yaml
 scrape_configs:
   - job_name: 'mikrotik'
     scrape_interval: 1m
-    scrape_timeout: 50s # Should be slightly less than scrape_interval and greater than exporter's scrape.timeout
-    metrics_path: /metrics # Or your custom path if using -web.telemetry-path
+    scrape_timeout: 50s
+    metrics_path: /metrics
     static_configs:
-      - targets: ['192.168.88.1'] # Replace with your router IPs/hostnames
-
+      - targets: ['192.168.88.1']
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
       - source_labels: [__param_target]
         target_label: instance
       - target_label: __address__
-        replacement: localhost:9483 # Address of the ros-exporter itself
-
-      # Pass credentials via parameters. User defaults to 'prometheus' if omitted.
-      # Consider using Prometheus agent secrets management for production.
-      # - target_label: __param_user
-      #   replacement: your_custom_user # Uncomment and set if not using default 'prometheus'
+        replacement: localhost:9483
       - target_label: __param_password
-        replacement: YOUR_STRONG_PASSWORD # Replace with the password set on the router
-
-      # Optionally specify the API port (defaults to 8728 if omitted)
-      # - target_label: __param_port
-      #   replacement: 8729 # Example: Use non-standard port
-
-      # Optionally enable BGP and/or PPP metrics per target
-      # Add these blocks if you want to enable them for this job. Default is false.
-      # - target_label: __param_collect_bgp
-      #   replacement: true
-      # - target_label: __param_collect_ppp
-      #   replacement: true
+        replacement: YOUR_STRONG_PASSWORD
 ```
 
-**Explanation:**
+Optional params: `collect_bgp`, `collect_ppp`, `collect_wireless`, `collect_ospf`, `collect_optics`.
 
-1. `targets`: List your MikroTik router IPs/hostnames here.
-2. `relabel_configs`:
-    - The first two rules take the router address from `targets` and set it as the `target` URL parameter (`__param_target`) for the exporter and also as the `instance` label in Prometheus.
-    - The third rule rewrites the scrape address (`__address__`) to point to where your `ros-exporter` is running (e.g., `localhost:9483`).
-    - The `__param_user` rule adds the username. If omitted, the exporter defaults to `prometheus`.
-    - The `__param_password` rule adds the password. **Warning:** Storing passwords directly in `prometheus.yml` is insecure. Use appropriate secret management in production.
-    - The optional `__param_port` rule allows specifying a non-default API port (default is 8728).
-    - The optional `__param_collect_bgp` and `__param_collect_ppp` rules enable collection of BGP and PPP metrics respectively (default is `false`).
+Set Prometheus `scrape_timeout` **greater than** exporter `-scrape.timeout`.
 
-Alternatively, using the `params` block (Prometheus v2.28+):
+## Metrics (status)
 
-```yaml
-scrape_configs:
-  - job_name: 'mikrotik-params'
-    scrape_interval: 1m
-    scrape_timeout: 50s
-    metrics_path: /metrics # Or your custom path
-    params:
-      # user: ['your_custom_user'] # Optional: Defaults to 'prometheus' if omitted
-      password: ['YOUR_STRONG_PASSWORD'] # Required
-      # port: ['8729'] # Optional: Defaults to 8728 if omitted
-      collect_bgp: ['true'] # Optional: Enable BGP collection
-      collect_ppp: ['true'] # Optional: Enable PPP collection
-    static_configs:
-      - targets: ['192.168.88.1', '10.0.0.1'] # Router IPs/hostnames
+| Metric | Meaning |
+|--------|---------|
+| `mikrotik_up` / `mikrotik_connected` | API TCP login succeeded |
+| `mikrotik_scrape_success` | No collector errors in this scrape |
+| `mikrotik_last_scrape_error` | Inverse signal for partial/full scrape errors |
+| `mikrotik_collector_error{collector=...}` | Per-collector failure |
+| `mikrotik_collector_supported{collector=...}` | Collector enabled/supported on target |
+| `mikrotik_build_info{version,commit}` | Exporter build |
+| `mikrotik_scrape_duration_seconds` | Scrape duration |
 
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: __param_target # Set target parameter from address
-      - source_labels: [__param_target]
-        target_label: instance # Set instance label from target parameter
-      - target_label: __address__
-        replacement: localhost:9483 # Address of the ros-exporter
+### Always collected
+
+- System: CPU, memory, uptime, storage, board info
+- Interfaces: RX/TX bytes/packets/errors/drops, operational status, admin up, speed, duplex (when reported)
+- Health: CPU/board temperature, voltage, current, power, fan
+
+### Optional
+
+- BGP peers (label `routing_instance`)
+- PPP sessions + RX/TX bytes
+- Wireless interfaces/clients (legacy wireless + wifiwave2), rates, noise floor, CCQ
+- OSPF neighbors (`collect_ospf=true`)
+- Transceiver temp/TX/RX power (`collect_optics=true`)
+
+## Testing
+
+```bash
+go test ./...
+go vet ./...
 ```
 
-## Metrics Exposed
+Fixtures under `pkg/mikrotik/testdata/` cover ROS6 and ROS7 sample payloads.
 
-> [!NOTE]
-> WIP
+## Ansible / release notes
 
-List the key metrics exposed:
-
-- `mikrotik_up`
-- `mikrotik_scrape_duration_seconds`
-- `mikrotik_last_scrape_error`
-- System metrics (e.g., `mikrotik_system_cpu_load_percent`, `mikrotik_system_memory_usage_bytes`)
-- Interface metrics (e.g., `mikrotik_interface_receive_bytes_total`)
-- BGP metrics (e.g., `mikrotik_bgp_peer_state`)
-- PPP metrics (e.g., `mikrotik_ppp_active_users_count`)
+- Release assets include per-binary SHA256 in `checksums.txt` and an SPDX SBOM.
+- Pin Ansible downloads to a release tag **and** verify `checksums.txt`.
+- Dashboard/alert changes live in ansible-infrastructure; this repo documents the metric contract in [docs/ALERTS.md](docs/ALERTS.md).
 
 ## Additional resources
 
 - [Grafana Dashboard](./resources/ros-grafana.json)
 - [SystemD Service](./resources/ros-exporter.service)
-
-## TODO
-
-#### Daemon experience
-
-- Implement configuration via YAML/env vars
-- Add better connection handling/pooling
-
-#### Project / developer experience
-
-- Debug mode
-- Add unit/integration tests
-- Add developer example how to implement metrics collection
-
-#### Collectors
-
-- feature: transceivers signal and temperature
-- feature: OSPF
-- feature: wireless interfaces client count, tx and rx rate, ccq, noice floor and frequency
-- fix: add Interface speed to mikrotik_interface_
-- fix: add hostname as name to mikrotik_system_info labels
+- [Alert contract](./docs/ALERTS.md)
 
 ## License
 

@@ -1,4 +1,8 @@
-FROM golang:1.24-alpine AS builder
+FROM golang:1.25-alpine AS builder
+
+ARG VERSION=dev
+ARG COMMIT=none
+ARG DATE=unknown
 
 WORKDIR /app
 
@@ -8,7 +12,9 @@ RUN go mod download
 COPY cmd/ ./cmd/
 COPY pkg/ ./pkg/
 
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o /ros-exporter ./cmd/ros-exporter
+RUN CGO_ENABLED=0 GOOS=linux go build \
+  -ldflags="-w -s -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE}" \
+  -o /ros-exporter ./cmd/ros-exporter
 
 FROM ghcr.io/taihen/base-image:v2025.10.09 As final
 

@@ -1,0 +1,46 @@
+{
+  "system_resource": {
+    "uptime": "5d12h",
+    "free-memory": "209715200",
+    "total-memory": "1073741824",
+    "cpu-load": "5",
+    "free-hdd-space": "2048",
+    "total-hdd-space": "8192",
+    "board-name": "CCR2004",
+    "model": "CCR2004-16G-2S+",
+    "serial-number": "XYZ789"
+  },
+  "health_rows": [
+    {"name": "temperature", "value": "55"},
+    {"name": "board-temperature", "value": "42"},
+    {"name": "psu1-voltage", "value": "12.1"},
+    {"name": "fan1-speed", "value": "3200"}
+  ],
+  "wifi_monitor": {
+    "ssid": "wave2",
+    "channel": "5180",
+    "signal": "-55",
+    "tx-rate": "866.6Mbps",
+    "rx-rate": "866.6Mbps",
+    "noise-floor": "-90"
+  },
+  "bgp_peer": {
+    "name": "peer1",
+    "instance": "default",
+    "remote-address": "203.0.113.1",
+    "remote-as": "65001",
+    "state": "established",
+    "uptime": "2h30m",
+    "prefix-count": "10",
+    "disabled": "false"
+  },
+  "ppp_user": {
+    "name": "user1",
+    "service": "pppoe",
+    "caller-id": "aa:bb:cc:dd:ee:ff",
+    "address": "10.0.0.2",
+    "uptime": "1h",
+    "bytes-in": "111",
+    "bytes-out": "222"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "system_resource": {
+    "uptime": "1w2d3h4m5s",
+    "free-memory": "104857600",
+    "total-memory": "268435456",
+    "cpu-load": "12",
+    "free-hdd-space": "1024",
+    "total-hdd-space": "4096",
+    "board-name": "RB4011",
+    "model": "RB4011iGS+",
+    "serial-number": "ABC123"
+  },
+  "interfaces": [
+    {
+      "name": "ether1",
+      "type": "ether",
+      "running": "true",
+      "disabled": "false",
+      "mac-address": "00:11:22:33:44:55",
+      "rx-byte": "1000",
+      "tx-byte": "2000",
+      "speed": "1Gbps",
+      "full-duplex": "true"
+    },
+    {
+      "name": "wlan1",
+      "type": "wlan",
+      "running": "true",
+      "disabled": "false",
+      "mac-address": "00:11:22:33:44:66",
+      "rx-byte": "500",
+      "tx-byte": "600"
+    }
+  ],
+  "health_flat": {
+    "temperature": "48",
+    "board-temperature": "40",
+    "voltage": "24"
+  },
+  "wireless_legacy_monitor": {
+    "ssid": "link",
+    "frequency": "2412",
+    "signal-strength": "-60",
+    "tx-rate": "72.2Mbps",
+    "rx-rate": "65Mbps",
+    "noise-floor": "-92"
+  }
+}

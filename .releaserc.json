@@ -21,6 +21,9 @@
           },
           {
             "path": "dist/checksums.txt"
+          },
+          {
+            "path": "dist/ros-exporter-sbom.spdx.json"
           }
         ]
       }

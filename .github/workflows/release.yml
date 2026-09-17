@@ -54,8 +54,17 @@ jobs:
       - name: Create checksums
         run: |
           cd dist
-          sha256sum * > checksums.txt
-          cd ..  # Go back to the root directory
+          sha256sum ros-exporter-* > checksums.txt
+          cd ..
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: spdx-json
+          artifact-name: ros-exporter-sbom.spdx.json
+          output-file: dist/ros-exporter-sbom.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
       - name: Semantic Release
         uses: cycjimmy/semantic-release-action@v6
         env:
