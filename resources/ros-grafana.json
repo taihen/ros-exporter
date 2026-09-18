@@ -17,8 +17,8 @@
   },
   "editable": true,
   "fiscalYearStartMonth": 0,
-  "graphTooltip": 0,
-  "id": 42,
+  "graphTooltip": 1,
+  "id": null,
   "links": [],
   "panels": [
     {
@@ -83,7 +83,7 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 4,
+        "w": 3,
         "x": 0,
         "y": 1
       },
@@ -117,13 +117,185 @@
           "expr": "mikrotik_up{instance=\"$instance\"}",
           "format": "time_series",
           "instant": true,
-          "legendFormat": "{{label_name}}",
+          "legendFormat": "up",
           "range": false,
           "refId": "A"
         }
       ],
-      "title": "Status",
-      "type": "stat"
+      "title": "API Connected",
+      "type": "stat",
+      "description": "API login only (mikrotik_up / mikrotik_connected). Prefer Scrape OK for full collector success."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "dark-red",
+                  "index": 0,
+                  "text": "Fail"
+                },
+                "1": {
+                  "color": "dark-green",
+                  "index": 1,
+                  "text": "OK"
+                }
+              },
+              "type": "value"
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "dark-red"
+              },
+              {
+                "color": "dark-red",
+                "value": 0.5
+              },
+              {
+                "color": "dark-green",
+                "value": 0.9
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 3,
+        "y": 1
+      },
+      "id": 320,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "mikrotik_scrape_success{instance=\"$instance\"}",
+          "format": "time_series",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Scrape OK",
+      "type": "stat",
+      "description": "1 if no collector errors this scrape. Partial failures can leave mikrotik_up=1 while this is 0."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "yellow",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 9
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 6,
+        "y": 1
+      },
+      "id": 307,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "disableTextWrap": false,
+          "editorMode": "builder",
+          "exemplar": false,
+          "expr": "mikrotik_scrape_duration_seconds{instance=\"$instance\"}",
+          "fullMetaSearch": false,
+          "includeNullMetadata": true,
+          "instant": true,
+          "legendFormat": "duration",
+          "range": false,
+          "refId": "A",
+          "useBackend": false
+        }
+      ],
+      "title": "Scrape Duration",
+      "type": "stat",
+      "description": "Last scrape duration. Spikes near -scrape.timeout often mean partial collector timeouts."
     },
     {
       "datasource": {
@@ -155,7 +327,7 @@
       "gridPos": {
         "h": 3,
         "w": 4,
-        "x": 4,
+        "x": 9,
         "y": 1
       },
       "id": 4,
@@ -229,7 +401,7 @@
       "gridPos": {
         "h": 3,
         "w": 4,
-        "x": 8,
+        "x": 13,
         "y": 1
       },
       "id": 6,
@@ -302,8 +474,8 @@
       },
       "gridPos": {
         "h": 3,
-        "w": 4,
-        "x": 12,
+        "w": 3,
+        "x": 17,
         "y": 1
       },
       "id": 8,
@@ -345,80 +517,6 @@
         }
       ],
       "title": "Firmware",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${datasource}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green"
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 3,
-        "w": 4,
-        "x": 16,
-        "y": 1
-      },
-      "id": 307,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "percentChangeColorMode": "standard",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "11.6.0",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "disableTextWrap": false,
-          "editorMode": "builder",
-          "exemplar": false,
-          "expr": "mikrotik_scrape_duration_seconds{instance=\"$instance\"}",
-          "fullMetaSearch": false,
-          "includeNullMetadata": true,
-          "instant": true,
-          "legendFormat": "{{label_name}}",
-          "range": false,
-          "refId": "A",
-          "useBackend": false
-        }
-      ],
-      "title": "Scrape",
       "type": "stat"
     },
     {
@@ -711,7 +809,7 @@
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "instant": false,
-          "legendFormat": "Memory Usage",
+          "legendFormat": "Storage Usage",
           "range": true,
           "refId": "A",
           "useBackend": false
@@ -743,7 +841,7 @@
               }
             ]
           },
-          "unit": "mamph"
+          "unit": "amp"
         },
         "overrides": []
       },
@@ -884,7 +982,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "thresholds"
+            "mode": "palette-classic"
           },
           "mappings": [],
           "thresholds": {
@@ -899,7 +997,7 @@
               }
             ]
           },
-          "unit": "celsius"
+          "unit": "volt"
         },
         "overrides": []
       },
@@ -907,6 +1005,81 @@
         "h": 3,
         "w": 4,
         "x": 8,
+        "y": 10
+      },
+      "id": 321,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "percentChangeColorMode": "standard",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "mikrotik_health_voltage_volts{instance=\"$instance\"}",
+          "format": "time_series",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Voltage",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "yellow",
+                "value": 70
+              },
+              {
+                "color": "red",
+                "value": 75
+              }
+            ]
+          },
+          "unit": "celsius"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 4,
+        "x": 12,
         "y": 10
       },
       "id": 311,
@@ -972,8 +1145,12 @@
                 "color": "green"
               },
               {
+                "color": "yellow",
+                "value": 70
+              },
+              {
                 "color": "red",
-                "value": 80
+                "value": 75
               }
             ]
           },
@@ -984,7 +1161,7 @@
       "gridPos": {
         "h": 3,
         "w": 4,
-        "x": 12,
+        "x": 16,
         "y": 10
       },
       "id": 312,
@@ -1018,7 +1195,7 @@
           "disableTextWrap": false,
           "editorMode": "builder",
           "exemplar": false,
-          "expr": "mikrotik_health_temperature_celsius{instance=\"$instance\", sensor=\"board\"}",
+          "expr": "mikrotik_health_board_temperature_celsius{instance=\"$instance\"}",
           "format": "time_series",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
@@ -1062,7 +1239,7 @@
       "gridPos": {
         "h": 3,
         "w": 4,
-        "x": 16,
+        "x": 20,
         "y": 10
       },
       "id": 313,
@@ -1111,12 +1288,210 @@
       "type": "stat"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 0,
+        "y": 13
+      },
+      "id": 322,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "mikrotik_collector_error{instance=\"$instance\"}",
+          "legendFormat": "{{collector}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Collector Errors",
+      "type": "timeseries",
+      "description": "Per-collector failure flags from the last scrape."
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 12,
+        "x": 12,
+        "y": 13
+      },
+      "id": 323,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "mikrotik_collector_supported{instance=\"$instance\"}",
+          "legendFormat": "{{collector}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Collector Supported",
+      "type": "timeseries",
+      "description": "1 if collector enabled/available on the device for this scrape. Optional collectors stay 0/absent when collect_*=false \u2014 that is not a scrape failure."
+    },
+    {
       "collapsed": false,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 13
+        "y": 18
       },
       "id": 300,
       "panels": [],
@@ -1197,10 +1572,10 @@
         ]
       },
       "gridPos": {
-        "h": 12,
+        "h": 8,
         "w": 24,
         "x": 0,
-        "y": 14
+        "y": 19
       },
       "id": 28,
       "options": {
@@ -1224,9 +1599,9 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "irate(mikrotik_interface_receive_bytes_total{instance=\"$instance\"}[5m]) * 8",
+          "expr": "rate(mikrotik_interface_receive_bytes_total{instance=\"$instance\"}[$__rate_interval]) * 8",
           "instant": false,
-          "legendFormat": "{{name}} - Rx",
+          "legendFormat": "Rx {{name}}",
           "range": true,
           "refId": "A"
         },
@@ -1238,7 +1613,7 @@
           "editorMode": "code",
           "expr": "rate(mikrotik_interface_transmit_bytes_total{instance=\"$instance\"}[$__rate_interval]) * 8",
           "instant": false,
-          "legendFormat": "{{name}} - Tx",
+          "legendFormat": "Tx {{name}}",
           "range": true,
           "refId": "B"
         }
@@ -1247,19 +1622,2434 @@
       "type": "timeseries"
     },
     {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 27
+      },
+      "id": 324,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "rate(mikrotik_interface_receive_errors_total{instance=\"$instance\"}[$__rate_interval])",
+          "legendFormat": "Rx err {{name}}",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "rate(mikrotik_interface_transmit_errors_total{instance=\"$instance\"}[$__rate_interval])",
+          "legendFormat": "Tx err {{name}}",
+          "range": true,
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "rate(mikrotik_interface_receive_drops_total{instance=\"$instance\"}[$__rate_interval])",
+          "legendFormat": "Rx drop {{name}}",
+          "range": true,
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "rate(mikrotik_interface_transmit_drops_total{instance=\"$instance\"}[$__rate_interval])",
+          "legendFormat": "Tx drop {{name}}",
+          "range": true,
+          "refId": "D"
+        }
+      ],
+      "title": "Interface Errors & Drops",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${datasource}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "opacity",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 27
+      },
+      "id": 325,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "11.6.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "mikrotik_interface_admin_up{instance=\"$instance\"}",
+          "legendFormat": "admin {{name}}",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "mikrotik_interface_info{instance=\"$instance\"}",
+          "legendFormat": "running {{name}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Interface Admin vs Running",
+      "type": "timeseries"
+    },
+    {
       "collapsed": true,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 26
+        "y": 36
+      },
+      "id": 400,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [
+                {
+                  "options": {
+                    "0": {
+                      "color": "dark-red",
+                      "index": 0,
+                      "text": "Down"
+                    },
+                    "1": {
+                      "color": "dark-green",
+                      "index": 1,
+                      "text": "Up"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "dark-red"
+                  },
+                  {
+                    "color": "dark-red",
+                    "value": 0.5
+                  },
+                  {
+                    "color": "dark-green",
+                    "value": 0.9
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 0,
+            "y": 37
+          },
+          "id": 401,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "min(mikrotik_wireless_interface_connected{instance=\"$instance\", role=~\"station|unknown\", name=~\"$wireless_iface\"})",
+              "format": "time_series",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "Station Connected (worst)",
+          "type": "stat",
+          "description": "Worst-case across selected station/unknown radios (min). Includes role=unknown when mode is missing. 0 means at least one link is down."
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [
+                {
+                  "options": {
+                    "0": {
+                      "color": "dark-red",
+                      "index": 0,
+                      "text": "Down"
+                    },
+                    "1": {
+                      "color": "dark-green",
+                      "index": 1,
+                      "text": "Up"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "dark-red"
+                  },
+                  {
+                    "color": "dark-red",
+                    "value": 0.5
+                  },
+                  {
+                    "color": "dark-green",
+                    "value": 0.9
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 4,
+            "y": 37
+          },
+          "id": 402,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "min(mikrotik_wireless_interface_connected{instance=\"$instance\", role=\"ap\", name=~\"$wireless_iface\"})",
+              "format": "time_series",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "AP Connected (worst)",
+          "type": "stat",
+          "description": "Worst-case AP connected (equals radio running for APs). Empty when no AP interfaces match."
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 8,
+            "y": 37
+          },
+          "id": 403,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "sum(mikrotik_wireless_interface_active_clients_count{instance=\"$instance\", interface=~\"$wireless_iface\"})",
+              "format": "time_series",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "Active Clients",
+          "type": "stat",
+          "description": "Sum of active clients across selected wireless interfaces."
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "dark-red"
+                  },
+                  {
+                    "color": "yellow",
+                    "value": -80
+                  },
+                  {
+                    "color": "green",
+                    "value": -70
+                  }
+                ]
+              },
+              "unit": "dBm"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 12,
+            "y": 37
+          },
+          "id": 404,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "min(mikrotik_wireless_interface_signal_strength_dbm{instance=\"$instance\", name=~\"$wireless_iface\"} and on(instance, name) mikrotik_wireless_interface_info{instance=\"$instance\", role=~\"station|unknown\", name=~\"$wireless_iface\"})",
+              "format": "time_series",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "Station Signal (worst)",
+          "type": "stat",
+          "description": "Minimum (worst) station/unknown signal. Alert contract: < -80 dBm."
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "dark-red"
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 20
+                  },
+                  {
+                    "color": "green",
+                    "value": 25
+                  }
+                ]
+              },
+              "unit": "dB"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 16,
+            "y": 37
+          },
+          "id": 405,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "min(mikrotik_wireless_interface_signal_to_noise_db{instance=\"$instance\", name=~\"$wireless_iface\"} and on(instance, name) mikrotik_wireless_interface_info{instance=\"$instance\", role=~\"station|unknown\", name=~\"$wireless_iface\"})",
+              "format": "time_series",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "Station SNR (worst)",
+          "type": "stat",
+          "description": "Minimum station/unknown SNR. Alert contract: < 20 dB."
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "yellow",
+                    "value": -80
+                  },
+                  {
+                    "color": "dark-red",
+                    "value": -70
+                  }
+                ]
+              },
+              "unit": "dBm"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 20,
+            "y": 37
+          },
+          "id": 406,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "max(mikrotik_wireless_interface_noise_floor_dbm{instance=\"$instance\", name=~\"$wireless_iface\"})",
+              "format": "time_series",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "Noise Floor (worst)",
+          "type": "stat",
+          "description": "Maximum (worst) noise floor. Alert contract: > -70 dBm."
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "fixed",
+                "fixedColor": "text"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "mhz"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 0,
+            "y": 41
+          },
+          "id": 411,
+          "options": {
+            "colorMode": "none",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [],
+              "fields": "",
+              "values": true
+            },
+            "showPercentChange": false,
+            "textMode": "value",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "mikrotik_wireless_interface_channel_width_mhz{instance=\"$instance\", name=~\"$wireless_iface\"}",
+              "format": "time_series",
+              "instant": true,
+              "legendFormat": "{{name}}",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "Channel Width",
+          "type": "stat",
+          "description": "Operational channel width gauge (not an info label). Watch for unexpected fallback (e.g. 80\u219240)."
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "dark-red"
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 70
+                  },
+                  {
+                    "color": "green",
+                    "value": 85
+                  }
+                ]
+              },
+              "unit": "percent"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 4,
+            "y": 41
+          },
+          "id": 412,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "min(mikrotik_wireless_interface_transmit_ccq_percent{instance=\"$instance\", name=~\"$wireless_iface\"})",
+              "format": "time_series",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "Station Tx CCQ (worst)",
+          "type": "stat",
+          "description": "Legacy wireless CCQ; often absent on wifiwave2. Alert contract: < 70%."
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "dark-red"
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 70
+                  },
+                  {
+                    "color": "green",
+                    "value": 85
+                  }
+                ]
+              },
+              "unit": "percent"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 8,
+            "y": 41
+          },
+          "id": 413,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "min(mikrotik_wireless_interface_receive_ccq_percent{instance=\"$instance\", name=~\"$wireless_iface\"})",
+              "format": "time_series",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "Station Rx CCQ (worst)",
+          "type": "stat",
+          "description": "Legacy wireless CCQ; often absent on wifiwave2."
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "dBm"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 41
+          },
+          "id": 407,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "mikrotik_wireless_interface_signal_strength_dbm{instance=\"$instance\", name=~\"$wireless_iface\"}",
+              "legendFormat": "signal {{name}}",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "mikrotik_wireless_interface_noise_floor_dbm{instance=\"$instance\", name=~\"$wireless_iface\"}",
+              "legendFormat": "noise {{name}}",
+              "range": true,
+              "refId": "B"
+            }
+          ],
+          "title": "Wireless Interface Signal / Noise (dBm)",
+          "type": "timeseries",
+          "description": "Signal and noise floor in dBm. SNR is on a separate panel (dB)."
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "dB"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 49
+          },
+          "id": 414,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "mikrotik_wireless_interface_signal_to_noise_db{instance=\"$instance\", name=~\"$wireless_iface\"}",
+              "legendFormat": "snr {{name}}",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Wireless Interface SNR (dB)",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "bps"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "/Tx/"
+                },
+                "properties": [
+                  {
+                    "id": "custom.transform",
+                    "value": "negative-Y"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 49
+          },
+          "id": 408,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "mikrotik_wireless_interface_receive_rate_bps{instance=\"$instance\", name=~\"$wireless_iface\"}",
+              "legendFormat": "Rx {{name}}",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "mikrotik_wireless_interface_transmit_rate_bps{instance=\"$instance\", name=~\"$wireless_iface\"}",
+              "legendFormat": "Tx {{name}}",
+              "range": true,
+              "refId": "B"
+            }
+          ],
+          "title": "Wireless Interface Rates",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "dark-red"
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 70
+                  },
+                  {
+                    "color": "green",
+                    "value": 85
+                  }
+                ]
+              },
+              "unit": "percent"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 49
+          },
+          "id": 415,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "mikrotik_wireless_interface_transmit_ccq_percent{instance=\"$instance\", name=~\"$wireless_iface\"}",
+              "legendFormat": "Tx CCQ {{name}}",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "mikrotik_wireless_interface_receive_ccq_percent{instance=\"$instance\", name=~\"$wireless_iface\"}",
+              "legendFormat": "Rx CCQ {{name}}",
+              "range": true,
+              "refId": "B"
+            }
+          ],
+          "title": "Wireless Interface CCQ",
+          "type": "timeseries",
+          "description": "Empty on wifiwave2 when the device does not report CCQ."
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "dBm"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 57
+          },
+          "id": 409,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "mikrotik_wireless_client_signal_strength_dbm{instance=\"$instance\", interface=~\"$wireless_iface\"}",
+              "legendFormat": "{{interface}} {{mac_address}}",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Client Signal Strength",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  }
+                ]
+              },
+              "unit": "dB"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 57
+          },
+          "id": 416,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "mikrotik_wireless_client_signal_to_noise_db{instance=\"$instance\", interface=~\"$wireless_iface\"}",
+              "legendFormat": "{{interface}} {{mac_address}}",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Client SNR",
+          "type": "timeseries",
+          "description": "Alert contract: < 20 dB."
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "dark-red"
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 70
+                  },
+                  {
+                    "color": "green",
+                    "value": 85
+                  }
+                ]
+              },
+              "unit": "percent"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 57
+          },
+          "id": 417,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "mikrotik_wireless_client_transmit_ccq_percent{instance=\"$instance\", interface=~\"$wireless_iface\"}",
+              "legendFormat": "Tx {{mac_address}}",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "mikrotik_wireless_client_receive_ccq_percent{instance=\"$instance\", interface=~\"$wireless_iface\"}",
+              "legendFormat": "Rx {{mac_address}}",
+              "range": true,
+              "refId": "B"
+            }
+          ],
+          "title": "Client CCQ",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "bps"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "/Tx/"
+                },
+                "properties": [
+                  {
+                    "id": "custom.transform",
+                    "value": "negative-Y"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 65
+          },
+          "id": 410,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "mikrotik_wireless_client_receive_rate_bps{instance=\"$instance\", interface=~\"$wireless_iface\"}",
+              "legendFormat": "Rx {{mac_address}}",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "mikrotik_wireless_client_transmit_rate_bps{instance=\"$instance\", interface=~\"$wireless_iface\"}",
+              "legendFormat": "Tx {{mac_address}}",
+              "range": true,
+              "refId": "B"
+            }
+          ],
+          "title": "Client Rates",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "mhz"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 65
+          },
+          "id": 418,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "mikrotik_wireless_interface_frequency_mhz{instance=\"$instance\", name=~\"$wireless_iface\"}",
+              "legendFormat": "{{name}}",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Wireless Frequency",
+          "type": "timeseries"
+        }
+      ],
+      "title": "Wireless (collect_wireless=true)",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 37
+      },
+      "id": 500,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "dBm"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "/Tx/"
+                },
+                "properties": [
+                  {
+                    "id": "custom.transform",
+                    "value": "negative-Y"
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 38
+          },
+          "id": 501,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "mikrotik_transceiver_receive_power_dbm{instance=\"$instance\"}",
+              "legendFormat": "Rx {{interface}}",
+              "range": true,
+              "refId": "A"
+            },
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "mikrotik_transceiver_transmit_power_dbm{instance=\"$instance\"}",
+              "legendFormat": "Tx {{interface}}",
+              "range": true,
+              "refId": "B"
+            }
+          ],
+          "title": "Transceiver TX/RX Power",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "celsius"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 38
+          },
+          "id": 502,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "mikrotik_transceiver_temperature_celsius{instance=\"$instance\"}",
+              "legendFormat": "{{interface}}",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Transceiver Temperature",
+          "type": "timeseries"
+        }
+      ],
+      "title": "Optics (collect_optics=true)",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 38
+      },
+      "id": 600,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "barWidthFactor": 0.6,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": true,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 39
+          },
+          "id": 601,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "hideZeros": false,
+              "mode": "multi",
+              "sort": "none"
+            }
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "mikrotik_ospf_neighbor_state{instance=\"$instance\"}",
+              "legendFormat": "{{router_id}} {{interface}}",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "OSPF Neighbor State",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 12,
+            "y": 39
+          },
+          "id": 602,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "count(mikrotik_ospf_neighbor_state{instance=\"$instance\"} == 1)",
+              "format": "time_series",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "OSPF Neighbors Full",
+          "type": "stat",
+          "description": "Empty/No data when OSPF collector is disabled or unsupported \u2014 not the same as zero Full neighbors."
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green"
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 6,
+            "x": 18,
+            "y": 39
+          },
+          "id": 603,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "center",
+            "orientation": "auto",
+            "percentChangeColorMode": "standard",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "11.6.0",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "count(mikrotik_ospf_neighbor_state{instance=\"$instance\"} == 0)",
+              "format": "time_series",
+              "instant": true,
+              "legendFormat": "__auto",
+              "range": false,
+              "refId": "A"
+            }
+          ],
+          "title": "OSPF Neighbors Not Full",
+          "type": "stat",
+          "description": "Empty/No data when OSPF collector is disabled or unsupported."
+        }
+      ],
+      "title": "OSPF (collect_ospf=true)",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 39
       },
       "id": 301,
       "panels": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "cehfr9pxtob9cc"
+            "uid": "${datasource}"
           },
           "fieldConfig": {
             "defaults": {
@@ -1287,7 +4077,7 @@
             "h": 4,
             "w": 4,
             "x": 0,
-            "y": 39
+            "y": 40
           },
           "id": 302,
           "options": {
@@ -1297,28 +4087,26 @@
             "orientation": "auto",
             "percentChangeColorMode": "standard",
             "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
+              "calcs": [],
               "fields": "",
-              "values": false
+              "values": true
             },
             "showPercentChange": false,
-            "textMode": "auto",
+            "textMode": "value",
             "wideLayout": true
           },
           "pluginVersion": "11.6.0",
           "targets": [
             {
-              "disableTextWrap": false,
-              "editorMode": "builder",
-              "expr": "mikrotik_bgp_peer_uptime_seconds{instance=\"$instance\", name=\"$bgp_peers\"}",
-              "fullMetaSearch": false,
-              "includeNullMetadata": true,
-              "legendFormat": "__auto",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "mikrotik_bgp_peer_uptime_seconds{instance=\"$instance\", name=~\"$bgp_peers\"} * on(instance, name) group_left(routing_instance) mikrotik_bgp_peer_info{instance=\"$instance\", name=~\"$bgp_peers\", disabled=\"false\"}",
+              "legendFormat": "{{name}} ({{routing_instance}})",
               "range": true,
-              "refId": "A",
-              "useBackend": false
+              "refId": "A"
             }
           ],
           "title": "Uptime",
@@ -1327,7 +4115,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "cehfr9pxtob9cc"
+            "uid": "${datasource}"
           },
           "fieldConfig": {
             "defaults": {
@@ -1352,10 +4140,10 @@
             "overrides": []
           },
           "gridPos": {
-            "h": 8,
+            "h": 4,
             "w": 6,
             "x": 4,
-            "y": 39
+            "y": 40
           },
           "id": 303,
           "options": {
@@ -1365,28 +4153,26 @@
             "orientation": "auto",
             "percentChangeColorMode": "standard",
             "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
+              "calcs": [],
               "fields": "",
-              "values": false
+              "values": true
             },
             "showPercentChange": false,
-            "textMode": "auto",
+            "textMode": "value",
             "wideLayout": true
           },
           "pluginVersion": "11.6.0",
           "targets": [
             {
-              "disableTextWrap": false,
-              "editorMode": "builder",
-              "expr": "mikrotik_bgp_peer_prefix_count{instance=\"$instance\", name=\"$bgp_peers\"}",
-              "fullMetaSearch": false,
-              "includeNullMetadata": true,
-              "legendFormat": "__auto",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "mikrotik_bgp_peer_prefix_count{instance=\"$instance\", name=~\"$bgp_peers\"} * on(instance, name) group_left(routing_instance) mikrotik_bgp_peer_info{instance=\"$instance\", name=~\"$bgp_peers\", disabled=\"false\"}",
+              "legendFormat": "{{name}} ({{routing_instance}})",
               "range": true,
-              "refId": "A",
-              "useBackend": false
+              "refId": "A"
             }
           ],
           "title": "Prefix Count",
@@ -1395,7 +4181,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "cehfr9pxtob9cc"
+            "uid": "${datasource}"
           },
           "fieldConfig": {
             "defaults": {
@@ -1453,10 +4239,10 @@
             "overrides": []
           },
           "gridPos": {
-            "h": 8,
+            "h": 4,
             "w": 7,
             "x": 10,
-            "y": 39
+            "y": 40
           },
           "id": 304,
           "options": {
@@ -1475,15 +4261,15 @@
           "pluginVersion": "11.6.0",
           "targets": [
             {
-              "disableTextWrap": false,
-              "editorMode": "builder",
-              "expr": "rate(mikrotik_bgp_peer_updates_received_total{instance=\"$instance\", name=\"$bgp_peers\"}[$__rate_interval])",
-              "fullMetaSearch": false,
-              "includeNullMetadata": false,
-              "legendFormat": "__auto",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "rate(mikrotik_bgp_peer_updates_received_total{instance=\"$instance\", name=~\"$bgp_peers\"}[$__rate_interval]) * on(instance, name) group_left(routing_instance) mikrotik_bgp_peer_info{instance=\"$instance\", name=~\"$bgp_peers\", disabled=\"false\"}",
+              "legendFormat": "{{name}} ({{routing_instance}})",
               "range": true,
-              "refId": "A",
-              "useBackend": false
+              "refId": "A"
             }
           ],
           "title": "Updates",
@@ -1492,7 +4278,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "cehfr9pxtob9cc"
+            "uid": "${datasource}"
           },
           "fieldConfig": {
             "defaults": {
@@ -1550,10 +4336,10 @@
             "overrides": []
           },
           "gridPos": {
-            "h": 8,
+            "h": 4,
             "w": 7,
             "x": 17,
-            "y": 39
+            "y": 40
           },
           "id": 305,
           "options": {
@@ -1572,15 +4358,15 @@
           "pluginVersion": "11.6.0",
           "targets": [
             {
-              "disableTextWrap": false,
-              "editorMode": "builder",
-              "expr": "rate(mikrotik_bgp_peer_withdraws_received_total{instance=\"$instance\", name=\"$bgp_peers\"}[$__rate_interval])",
-              "fullMetaSearch": false,
-              "includeNullMetadata": false,
-              "legendFormat": "__auto",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "rate(mikrotik_bgp_peer_withdraws_received_total{instance=\"$instance\", name=~\"$bgp_peers\"}[$__rate_interval]) * on(instance, name) group_left(routing_instance) mikrotik_bgp_peer_info{instance=\"$instance\", name=~\"$bgp_peers\", disabled=\"false\"}",
+              "legendFormat": "{{name}} ({{routing_instance}})",
               "range": true,
-              "refId": "A",
-              "useBackend": false
+              "refId": "A"
             }
           ],
           "title": "Withdraws",
@@ -1589,23 +4375,43 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "cehfr9pxtob9cc"
+            "uid": "${datasource}"
           },
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "thresholds"
               },
-              "mappings": [],
+              "mappings": [
+                {
+                  "options": {
+                    "0": {
+                      "color": "dark-red",
+                      "index": 0,
+                      "text": "Down"
+                    },
+                    "1": {
+                      "color": "dark-green",
+                      "index": 1,
+                      "text": "Up"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green"
+                    "color": "dark-red"
                   },
                   {
-                    "color": "red",
-                    "value": 80
+                    "color": "dark-red",
+                    "value": 0.5
+                  },
+                  {
+                    "color": "dark-green",
+                    "value": 0.9
                   }
                 ]
               }
@@ -1616,7 +4422,7 @@
             "h": 4,
             "w": 4,
             "x": 0,
-            "y": 43
+            "y": 44
           },
           "id": 306,
           "options": {
@@ -1629,7 +4435,7 @@
               "calcs": [
                 "lastNotNull"
               ],
-              "fields": "/^state_text$/",
+              "fields": "",
               "values": false
             },
             "showPercentChange": false,
@@ -1639,26 +4445,24 @@
           "pluginVersion": "11.6.0",
           "targets": [
             {
-              "disableTextWrap": false,
-              "editorMode": "builder",
-              "exemplar": false,
-              "expr": "mikrotik_bgp_peer_state{instance=\"$instance\", name=\"$bgp_peers\"}",
-              "format": "table",
-              "fullMetaSearch": false,
-              "includeNullMetadata": true,
-              "instant": true,
-              "legendFormat": "{{ state_text }}",
-              "range": false,
-              "refId": "A",
-              "useBackend": false
+              "datasource": {
+                "type": "prometheus",
+                "uid": "${datasource}"
+              },
+              "editorMode": "code",
+              "expr": "min(mikrotik_bgp_peer_state{instance=\"$instance\", name=~\"$bgp_peers\"} and on(instance, name) mikrotik_bgp_peer_info{instance=\"$instance\", name=~\"$bgp_peers\", disabled=\"false\"})",
+              "legendFormat": "worst",
+              "range": true,
+              "refId": "A"
             }
           ],
-          "title": "State",
-          "type": "stat"
+          "title": "State (worst)",
+          "type": "stat",
+          "description": "Worst-case BGP state across selected enabled peers (min). 0 means at least one peer is not Established. routing_instance disambiguation is on the other BGP panels; peer gauges are keyed by name (multi-VRF same name can collide in the exporter)."
         }
       ],
       "repeat": "bgp_peers",
-      "title": "BGP: $bgp_peers",
+      "title": "BGP (collect_bgp=true): $bgp_peers",
       "type": "row"
     }
   ],
@@ -1667,16 +4471,18 @@
   "schemaVersion": 41,
   "tags": [
     "mikrotik",
-    "ros-exporter",
     "network",
-    "router-overview"
+    "ros-exporter",
+    "router-overview",
+    "scrape-health",
+    "wireless"
   ],
   "templating": {
     "list": [
       {
         "current": {
-          "text": "Prometheus",
-          "value": "cehfr9pxtob9cc"
+          "text": "",
+          "value": ""
         },
         "includeAll": false,
         "name": "datasource",
@@ -1688,8 +4494,8 @@
       },
       {
         "current": {
-          "text": "golem.netrunner.lan",
-          "value": "golem.netrunner.lan"
+          "text": "",
+          "value": ""
         },
         "datasource": {
           "type": "prometheus",
@@ -1700,6 +4506,7 @@
         "name": "instance",
         "options": [],
         "query": {
+          "qryType": 1,
           "query": "label_values(mikrotik_up, instance)",
           "refId": "Prometheus-instance-Variable-Query"
         },
@@ -1708,22 +4515,47 @@
         "type": "query"
       },
       {
-        "allowCustomValue": false,
+        "allValue": ".*",
         "current": {
-          "text": [
-            "mixer_v4"
-          ],
-          "value": [
-            "mixer_v4"
-          ]
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
         },
         "datasource": {
           "type": "prometheus",
-          "uid": "cehfr9pxtob9cc"
+          "uid": "${datasource}"
+        },
+        "definition": "label_values(mikrotik_wireless_interface_info{instance=\"$instance\"}, name)",
+        "includeAll": true,
+        "multi": true,
+        "name": "wireless_iface",
+        "options": [],
+        "query": {
+          "qryType": 1,
+          "query": "label_values(mikrotik_wireless_interface_info{instance=\"$instance\"}, name)",
+          "refId": "Prometheus-wireless_iface-Variable-Query"
+        },
+        "refresh": 2,
+        "regex": "",
+        "hide": 0,
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allowCustomValue": false,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "datasource": {
+          "type": "prometheus",
+          "uid": "${datasource}"
         },
         "definition": "label_values(mikrotik_bgp_peer_info{disabled=\"false\", instance=\"$instance\"},name)",
-        "hide": 2,
-        "includeAll": false,
+        "hide": 0,
+        "includeAll": true,
         "label": "BGP Peers",
         "multi": true,
         "name": "bgp_peers",
@@ -1736,7 +4568,8 @@
         "refresh": 1,
         "regex": "",
         "sort": 1,
-        "type": "query"
+        "type": "query",
+        "allValue": ".*"
       }
     ]
   },
@@ -1748,5 +4581,6 @@
   "timezone": "",
   "title": "MikroTik Router Overview",
   "uid": "mikrotik-ros-exporter-dashboard",
-  "version": 58
+  "version": 61,
+  "description": "MikroTik RouterOS overview for ros-exporter. Shows API Connected (mikrotik_up) vs Scrape OK (mikrotik_scrape_success), system/health, interfaces, and optional wireless/optics/OSPF/BGP collectors. Pin this JSON by release tag or commit SHA/checksum in ansible-infrastructure; do not pull a mutable main tip blindly."
 }
