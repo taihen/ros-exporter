@@ -49,9 +49,29 @@ expr: mikrotik_interface_admin_up == 1 and mikrotik_interface_info == 0
 ## Wireless (when collect_wireless=true)
 
 ```yaml
+# Station bridge link down (prefer over empty registration-table)
+expr: mikrotik_wireless_interface_connected{role="station"} == 0
+
+# Weak signal (AP peers or station interface via join — role is not on the signal metric)
 expr: mikrotik_wireless_client_signal_strength_dbm < -80
+expr: mikrotik_wireless_interface_signal_strength_dbm < -80 and on(instance, name) mikrotik_wireless_interface_info{role="station"}
+
+# RF environment
 expr: mikrotik_wireless_interface_noise_floor_dbm > -70
+expr: mikrotik_wireless_interface_signal_to_noise_db < 20
+expr: mikrotik_wireless_client_signal_to_noise_db < 20
+
+# Link quality (legacy wireless CCQ; often absent on wifiwave2)
+expr: mikrotik_wireless_interface_transmit_ccq_percent < 70
+expr: mikrotik_wireless_client_transmit_ccq_percent < 70
+
+# Optional: AP with no peers — can false-positive on idle PtMP sectors
+# expr: mikrotik_wireless_interface_active_clients_count == 0 and on(instance, interface) label_replace(mikrotik_wireless_interface_info{role="ap"}, "interface", "$1", "name", "(.*)")
 ```
+
+Info metric labels: `name`, `ssid`, `frequency`, `mode`, `role`, `bssid` (series ID change). Use `role="ap"|"station"` on `info` / `connected`, or join RF gauges with `info` on `(instance, name)`. Channel width is a gauge only (`channel_width_mhz`), not an info label.
+
+`active_clients_count` is emitted for every discovered wireless interface (including `0` when idle). `signal_to_noise_db` is separate from `noise_floor_dbm` (previously SNR could appear under noise floor). CCQ/SNR and `associated` are omitted for non-station interfaces / when the device does not report them. If `mode` is missing, `role` is `unknown` — use `mikrotik_wireless_interface_connected{role="unknown"} == 0` (not bare `associated == 0`).
 
 ## BGP (when collect_bgp=true)
 

@@ -45,21 +45,21 @@ type InterfaceStat struct {
 }
 
 type BGPPeerStat struct {
-	Name             string
-	RoutingInstance  string
-	RemoteAddress    string
-	RemoteAS         string
-	LocalAddress     string
-	LocalRole        string
-	RemoteRole       string
-	State            string
-	Uptime           time.Duration
-	PrefixCount      uint64
-	UpdatesSent      uint64
-	UpdatesRecv      uint64
-	WithdrawsSent    uint64
-	WithdrawsRecv    uint64
-	Disabled         bool
+	Name            string
+	RoutingInstance string
+	RemoteAddress   string
+	RemoteAS        string
+	LocalAddress    string
+	LocalRole       string
+	RemoteRole      string
+	State           string
+	Uptime          time.Duration
+	PrefixCount     uint64
+	UpdatesSent     uint64
+	UpdatesRecv     uint64
+	WithdrawsSent   uint64
+	WithdrawsRecv   uint64
+	Disabled        bool
 }
 
 type PPPUserStat struct {
@@ -86,24 +86,43 @@ type SystemHealth struct {
 type WirelessClient struct {
 	Interface      string
 	MacAddress     string
+	SSID           string
 	SignalStrength int
 	TxCCQ          int
+	RxCCQ          int
 	RxRateBps      float64
 	TxRateBps      float64
 	Uptime         time.Duration
 	NoiseFloor     int
+	SNR            int
 	HasNoiseFloor  bool
+	HasTxCCQ       bool
+	HasRxCCQ       bool
+	HasSNR         bool
 }
 
 type WirelessInterface struct {
-	Name           string
-	SSID           string
-	Frequency      int
-	SignalStrength int
-	TxRate         float64
-	RxRate         float64
-	NoiseFloor     int
-	HasNoiseFloor  bool
+	Name            string
+	SSID            string
+	Mode            string // raw RouterOS mode
+	Role            string // ap | station | unknown
+	Frequency       int
+	ChannelWidth    string // operational width label (e.g. "20", "40")
+	ChannelWidthMHz int    // MHz; 0 if unknown
+	SignalStrength  int
+	TxRate          float64
+	RxRate          float64
+	NoiseFloor      int
+	SNR             int
+	TxCCQ           int
+	RxCCQ           int
+	BSSID           string
+	Running         bool
+	Connected       bool
+	HasNoiseFloor   bool
+	HasSNR          bool
+	HasTxCCQ        bool
+	HasRxCCQ        bool
 }
 
 type OSPFNeighborStat struct {

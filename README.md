@@ -13,7 +13,7 @@ This exporter connects to MikroTik routers using the native API (via the `go-rou
 - System resources (CPU, memory, storage, uptime, board info) — always on
 - System health (temperature, board temperature, voltage, current, power, fan)
 - Interface stats (traffic, packets, errors, drops, admin state, speed, duplex)
-- Optional: BGP, PPP (incl. RX/TX bytes), wireless (legacy + wifiwave2/`/interface/wifi`), OSPF, transceiver optics
+- Optional: BGP, PPP (incl. RX/TX bytes), wireless bridges (legacy + wifiwave2/`/interface/wifi`, AP + station), OSPF, transceiver optics
 - Multi-target `/metrics?target=...` (default port `9483`)
 - Single scrape deadline (`-scrape.timeout`), connection concurrency limit
 - Status metrics: connected vs scrape success vs per-collector error
@@ -33,6 +33,9 @@ This exporter connects to MikroTik routers using the native API (via the `go-rou
 | BGP peer info label `instance` renamed to `routing_instance` | Avoids clash with Prometheus `instance` |
 | `mikrotik_up` means **API connected**, not full scrape success | Prefer `mikrotik_scrape_success` / `mikrotik_last_scrape_error` for completeness |
 | New metrics: `mikrotik_connected`, `mikrotik_scrape_success`, `mikrotik_collector_error`, `mikrotik_collector_supported` | Update dashboards/alerts |
+| Wireless interface info adds labels `mode`, `role`, `bssid` | Series ID change for `mikrotik_wireless_interface_info` |
+| Wireless client info adds label `ssid` | Series ID change for `mikrotik_wireless_client_info` |
+| Client SNR no longer stored as `noise_floor_dbm` | Use `mikrotik_wireless_*_signal_to_noise_db` |
 
 Existing alert `up{job="ros_exporter"} * mikrotik_up` still works for reachability. Add a second alert on `mikrotik_last_scrape_error == 1` for partial failures. See [docs/ALERTS.md](docs/ALERTS.md).
 
@@ -125,7 +128,7 @@ Set Prometheus `scrape_timeout` **greater than** exporter `-scrape.timeout`.
 
 - BGP peers (label `routing_instance`)
 - PPP sessions + RX/TX bytes
-- Wireless interfaces/clients (legacy wireless + wifiwave2), rates, noise floor, CCQ
+- Wireless interfaces/clients (legacy wireless + wifiwave2), AP/station `role`, connected/running, frequency/channel width, rates, noise floor, SNR, CCQ (legacy when reported); both packages merged on mixed devices
 - OSPF neighbors (`collect_ospf=true`)
 - Transceiver temp/TX/RX power (`collect_optics=true`)
 
