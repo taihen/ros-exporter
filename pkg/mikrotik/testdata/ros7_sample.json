@@ -24,6 +24,37 @@
     "rx-rate": "866.6Mbps",
     "noise-floor": "-90"
   },
+  "wifi_station_monitor": {
+    "ssid": "ptmp",
+    "channel": "5260/ax/Ceee",
+    "signal": "-61",
+    "tx-rate": "866600000",
+    "rx-rate": "650000000",
+    "noise-floor": "-92",
+    "state": "authorized",
+    "ap-address": "11:22:33:44:55:66"
+  },
+  "wifi_station_scanning": {
+    "ssid": "ptmp",
+    "channel": "2447/ax",
+    "state": "scanning",
+    "ap-address": "11:22:33:44:55:66"
+  },
+  "wifi_ap_monitor": {
+    "ssid": "ptmp",
+    "channel": "5600/ac/eCee",
+    "state": "running",
+    "registered-peers": "3"
+  },
+  "wifi_registration": {
+    "interface": "wifi1",
+    "mac-address": "11:22:33:44:55:77",
+    "ssid": "ptmp",
+    "signal": "-64",
+    "tx-rate": "433300000",
+    "rx-rate": "300000000",
+    "uptime": "45m"
+  },
   "bgp_peer": {
     "name": "peer1",
     "instance": "default",

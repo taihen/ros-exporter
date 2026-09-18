@@ -44,5 +44,40 @@
     "tx-rate": "72.2Mbps",
     "rx-rate": "65Mbps",
     "noise-floor": "-92"
+  },
+  "wireless_legacy_station_monitor": {
+    "ssid": "backhaul",
+    "channel": "5825/20/ac(10dBm)",
+    "signal-strength": "-58@MCS7",
+    "tx-rate": "150Mbps-40Mhz/2S",
+    "rx-rate": "135Mbps",
+    "noise-floor": "-95",
+    "signal-to-noise": "37",
+    "status": "connected-to-ess",
+    "bssid": "AA:BB:CC:DD:EE:01",
+    "tx-ccq": "95",
+    "rx-ccq": "92",
+    "overall-tx-ccq": "94"
+  },
+  "wireless_legacy_ap_monitor": {
+    "ssid": "backhaul",
+    "channel": "5825/40-Ce/ac(20dBm)",
+    "noise-floor": "-90",
+    "status": "running-ap",
+    "overall-tx-ccq": "88"
+  },
+  "wireless_legacy_registration": {
+    "interface": "wlan1",
+    "mac-address": "AA:BB:CC:DD:EE:02",
+    "ssid": "backhaul",
+    "signal-strength": "-62@MCS5",
+    "tx-ccq": "90",
+    "rx-ccq": "85",
+    "tx-rate": "150Mbps",
+    "rx-rate": "135Mbps",
+    "uptime": "2h15m",
+    "noise-floor": "-94",
+    "signal-to-noise": "32",
+    "ap": "false"
   }
 }

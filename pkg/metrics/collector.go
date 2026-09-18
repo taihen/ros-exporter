@@ -84,12 +84,22 @@ type MikrotikCollector struct {
 	wirelessInterfaceTxRateDesc         *prometheus.Desc
 	wirelessInterfaceRxRateDesc         *prometheus.Desc
 	wirelessInterfaceNoiseFloorDesc     *prometheus.Desc
+	wirelessInterfaceFrequencyDesc      *prometheus.Desc
+	wirelessInterfaceChannelWidthDesc   *prometheus.Desc
+	wirelessInterfaceConnectedDesc      *prometheus.Desc
+	wirelessInterfaceRunningDesc        *prometheus.Desc
+	wirelessInterfaceTxCCQDesc          *prometheus.Desc
+	wirelessInterfaceRxCCQDesc          *prometheus.Desc
+	wirelessInterfaceSNRDesc            *prometheus.Desc
+	wirelessInterfaceAssociatedDesc     *prometheus.Desc
 	wirelessClientInfoDesc              *prometheus.Desc
 	wirelessClientSignalStrengthDesc    *prometheus.Desc
 	wirelessClientTxCCQDesc             *prometheus.Desc
+	wirelessClientRxCCQDesc             *prometheus.Desc
 	wirelessClientTxRateDesc            *prometheus.Desc
 	wirelessClientRxRateDesc            *prometheus.Desc
 	wirelessClientNoiseFloorDesc        *prometheus.Desc
+	wirelessClientSNRDesc               *prometheus.Desc
 	wirelessClientUptimeDesc            *prometheus.Desc
 	wirelessActiveClientsDesc           *prometheus.Desc
 
@@ -383,7 +393,7 @@ func NewMikrotikCollectorWithOptions(client *mikrotik.Client, opts CollectorOpti
 		mc.wirelessInterfaceInfoDesc = prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "wireless_interface", "info"),
 			"Wireless interface information.",
-			[]string{"name", "ssid", "frequency"}, nil,
+			[]string{"name", "ssid", "frequency", "mode", "role", "bssid"}, nil,
 		)
 		mc.wirelessInterfaceSignalStrengthDesc = prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "wireless_interface", "signal_strength_dbm"),
@@ -405,10 +415,50 @@ func NewMikrotikCollectorWithOptions(client *mikrotik.Client, opts CollectorOpti
 			"Wireless interface noise floor in dBm.",
 			[]string{"name"}, nil,
 		)
+		mc.wirelessInterfaceFrequencyDesc = prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "wireless_interface", "frequency_mhz"),
+			"Wireless interface operating frequency in MHz.",
+			[]string{"name"}, nil,
+		)
+		mc.wirelessInterfaceChannelWidthDesc = prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "wireless_interface", "channel_width_mhz"),
+			"Wireless interface operational channel width in MHz.",
+			[]string{"name"}, nil,
+		)
+		mc.wirelessInterfaceConnectedDesc = prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "wireless_interface", "connected"),
+			"1 if the wireless link is up (station associated / AP radio running).",
+			[]string{"name", "role"}, nil,
+		)
+		mc.wirelessInterfaceRunningDesc = prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "wireless_interface", "running"),
+			"1 if the wireless interface is running.",
+			[]string{"name"}, nil,
+		)
+		mc.wirelessInterfaceTxCCQDesc = prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "wireless_interface", "transmit_ccq_percent"),
+			"Wireless interface transmit CCQ in percent (legacy wireless when reported).",
+			[]string{"name"}, nil,
+		)
+		mc.wirelessInterfaceRxCCQDesc = prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "wireless_interface", "receive_ccq_percent"),
+			"Wireless interface receive CCQ in percent (legacy wireless when reported).",
+			[]string{"name"}, nil,
+		)
+		mc.wirelessInterfaceSNRDesc = prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "wireless_interface", "signal_to_noise_db"),
+			"Wireless interface signal-to-noise ratio in dB.",
+			[]string{"name"}, nil,
+		)
+		mc.wirelessInterfaceAssociatedDesc = prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "wireless_interface", "associated"),
+			"1 if a station interface is associated; emitted only for role=station.",
+			[]string{"name"}, nil,
+		)
 		mc.wirelessClientInfoDesc = prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "wireless_client", "info"),
 			"Connected wireless client information (1 = connected).",
-			[]string{"interface", "mac_address"}, nil,
+			[]string{"interface", "mac_address", "ssid"}, nil,
 		)
 		mc.wirelessClientSignalStrengthDesc = prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "wireless_client", "signal_strength_dbm"),
@@ -418,6 +468,11 @@ func NewMikrotikCollectorWithOptions(client *mikrotik.Client, opts CollectorOpti
 		mc.wirelessClientTxCCQDesc = prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "wireless_client", "transmit_ccq_percent"),
 			"Connected wireless client transmit CCQ in percent.",
+			[]string{"interface", "mac_address"}, nil,
+		)
+		mc.wirelessClientRxCCQDesc = prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "wireless_client", "receive_ccq_percent"),
+			"Connected wireless client receive CCQ in percent.",
 			[]string{"interface", "mac_address"}, nil,
 		)
 		mc.wirelessClientTxRateDesc = prometheus.NewDesc(
@@ -433,6 +488,11 @@ func NewMikrotikCollectorWithOptions(client *mikrotik.Client, opts CollectorOpti
 		mc.wirelessClientNoiseFloorDesc = prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "wireless_client", "noise_floor_dbm"),
 			"Connected wireless client noise floor in dBm.",
+			[]string{"interface", "mac_address"}, nil,
+		)
+		mc.wirelessClientSNRDesc = prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "wireless_client", "signal_to_noise_db"),
+			"Connected wireless client signal-to-noise ratio in dB.",
 			[]string{"interface", "mac_address"}, nil,
 		)
 		mc.wirelessClientUptimeDesc = prometheus.NewDesc(
@@ -540,12 +600,22 @@ func (c *MikrotikCollector) Describe(ch chan<- *prometheus.Desc) {
 		ch <- c.wirelessInterfaceTxRateDesc
 		ch <- c.wirelessInterfaceRxRateDesc
 		ch <- c.wirelessInterfaceNoiseFloorDesc
+		ch <- c.wirelessInterfaceFrequencyDesc
+		ch <- c.wirelessInterfaceChannelWidthDesc
+		ch <- c.wirelessInterfaceConnectedDesc
+		ch <- c.wirelessInterfaceRunningDesc
+		ch <- c.wirelessInterfaceTxCCQDesc
+		ch <- c.wirelessInterfaceRxCCQDesc
+		ch <- c.wirelessInterfaceSNRDesc
+		ch <- c.wirelessInterfaceAssociatedDesc
 		ch <- c.wirelessClientInfoDesc
 		ch <- c.wirelessClientSignalStrengthDesc
 		ch <- c.wirelessClientTxCCQDesc
+		ch <- c.wirelessClientRxCCQDesc
 		ch <- c.wirelessClientTxRateDesc
 		ch <- c.wirelessClientRxRateDesc
 		ch <- c.wirelessClientNoiseFloorDesc
+		ch <- c.wirelessClientSNRDesc
 		ch <- c.wirelessClientUptimeDesc
 		ch <- c.wirelessActiveClientsDesc
 	}
@@ -798,10 +868,22 @@ func (c *MikrotikCollector) collectWirelessMetrics(s *scrapeState) {
 	if err == nil && wirelessInterfaces != nil {
 		for _, iface := range wirelessInterfaces {
 			s.ch <- prometheus.MustNewConstMetric(c.wirelessInterfaceInfoDesc, prometheus.GaugeValue, 1,
-				iface.Name, iface.SSID, strconv.Itoa(iface.Frequency),
+				iface.Name, iface.SSID, strconv.Itoa(iface.Frequency), iface.Mode, iface.Role, iface.BSSID,
 			)
-			if iface.SignalStrength != 0 {
-				s.ch <- prometheus.MustNewConstMetric(c.wirelessInterfaceSignalStrengthDesc, prometheus.GaugeValue, float64(iface.SignalStrength), iface.Name)
+			// Interface-level signal/CCQ/SNR are meaningful for stations; AP peers use client metrics.
+			if iface.Role == "station" {
+				if iface.SignalStrength != 0 {
+					s.ch <- prometheus.MustNewConstMetric(c.wirelessInterfaceSignalStrengthDesc, prometheus.GaugeValue, float64(iface.SignalStrength), iface.Name)
+				}
+				if iface.HasTxCCQ {
+					s.ch <- prometheus.MustNewConstMetric(c.wirelessInterfaceTxCCQDesc, prometheus.GaugeValue, float64(iface.TxCCQ), iface.Name)
+				}
+				if iface.HasRxCCQ {
+					s.ch <- prometheus.MustNewConstMetric(c.wirelessInterfaceRxCCQDesc, prometheus.GaugeValue, float64(iface.RxCCQ), iface.Name)
+				}
+				if iface.HasSNR {
+					s.ch <- prometheus.MustNewConstMetric(c.wirelessInterfaceSNRDesc, prometheus.GaugeValue, float64(iface.SNR), iface.Name)
+				}
 			}
 			if iface.TxRate > 0 {
 				s.ch <- prometheus.MustNewConstMetric(c.wirelessInterfaceTxRateDesc, prometheus.GaugeValue, iface.TxRate, iface.Name)
@@ -812,39 +894,59 @@ func (c *MikrotikCollector) collectWirelessMetrics(s *scrapeState) {
 			if iface.HasNoiseFloor {
 				s.ch <- prometheus.MustNewConstMetric(c.wirelessInterfaceNoiseFloorDesc, prometheus.GaugeValue, float64(iface.NoiseFloor), iface.Name)
 			}
+			if iface.Frequency > 0 {
+				s.ch <- prometheus.MustNewConstMetric(c.wirelessInterfaceFrequencyDesc, prometheus.GaugeValue, float64(iface.Frequency), iface.Name)
+			}
+			if iface.ChannelWidthMHz > 0 {
+				s.ch <- prometheus.MustNewConstMetric(c.wirelessInterfaceChannelWidthDesc, prometheus.GaugeValue, float64(iface.ChannelWidthMHz), iface.Name)
+			}
+			s.ch <- prometheus.MustNewConstMetric(c.wirelessInterfaceConnectedDesc, prometheus.GaugeValue, boolToFloat(iface.Connected), iface.Name, iface.Role)
+			s.ch <- prometheus.MustNewConstMetric(c.wirelessInterfaceRunningDesc, prometheus.GaugeValue, boolToFloat(iface.Running), iface.Name)
+			if iface.Role == "station" {
+				s.ch <- prometheus.MustNewConstMetric(c.wirelessInterfaceAssociatedDesc, prometheus.GaugeValue, boolToFloat(iface.Connected), iface.Name)
+			}
+		}
+	}
+
+	clientCounts := make(map[string]int)
+	if err == nil && wirelessInterfaces != nil {
+		for _, iface := range wirelessInterfaces {
+			clientCounts[iface.Name] = 0
 		}
 	}
 
 	wirelessClients, err := c.client.FetchWirelessClients()
 	if err != nil {
 		s.markErr("wireless", err)
-		return
-	}
-	if wirelessClients == nil {
-		return
-	}
-	clientCounts := make(map[string]int)
-	for _, client := range wirelessClients {
-		clientCounts[client.Interface]++
-		s.ch <- prometheus.MustNewConstMetric(c.wirelessClientInfoDesc, prometheus.GaugeValue, 1,
-			client.Interface, client.MacAddress,
-		)
-		if client.SignalStrength != 0 {
-			s.ch <- prometheus.MustNewConstMetric(c.wirelessClientSignalStrengthDesc, prometheus.GaugeValue, float64(client.SignalStrength), client.Interface, client.MacAddress)
+	} else if wirelessClients != nil {
+		for _, client := range wirelessClients {
+			clientCounts[client.Interface]++
+			s.ch <- prometheus.MustNewConstMetric(c.wirelessClientInfoDesc, prometheus.GaugeValue, 1,
+				client.Interface, client.MacAddress, client.SSID,
+			)
+			if client.SignalStrength != 0 {
+				s.ch <- prometheus.MustNewConstMetric(c.wirelessClientSignalStrengthDesc, prometheus.GaugeValue, float64(client.SignalStrength), client.Interface, client.MacAddress)
+			}
+			if client.HasTxCCQ {
+				s.ch <- prometheus.MustNewConstMetric(c.wirelessClientTxCCQDesc, prometheus.GaugeValue, float64(client.TxCCQ), client.Interface, client.MacAddress)
+			}
+			if client.HasRxCCQ {
+				s.ch <- prometheus.MustNewConstMetric(c.wirelessClientRxCCQDesc, prometheus.GaugeValue, float64(client.RxCCQ), client.Interface, client.MacAddress)
+			}
+			if client.TxRateBps > 0 {
+				s.ch <- prometheus.MustNewConstMetric(c.wirelessClientTxRateDesc, prometheus.GaugeValue, client.TxRateBps, client.Interface, client.MacAddress)
+			}
+			if client.RxRateBps > 0 {
+				s.ch <- prometheus.MustNewConstMetric(c.wirelessClientRxRateDesc, prometheus.GaugeValue, client.RxRateBps, client.Interface, client.MacAddress)
+			}
+			if client.HasNoiseFloor {
+				s.ch <- prometheus.MustNewConstMetric(c.wirelessClientNoiseFloorDesc, prometheus.GaugeValue, float64(client.NoiseFloor), client.Interface, client.MacAddress)
+			}
+			if client.HasSNR {
+				s.ch <- prometheus.MustNewConstMetric(c.wirelessClientSNRDesc, prometheus.GaugeValue, float64(client.SNR), client.Interface, client.MacAddress)
+			}
+			s.ch <- prometheus.MustNewConstMetric(c.wirelessClientUptimeDesc, prometheus.GaugeValue, client.Uptime.Seconds(), client.Interface, client.MacAddress)
 		}
-		if client.TxCCQ != 0 {
-			s.ch <- prometheus.MustNewConstMetric(c.wirelessClientTxCCQDesc, prometheus.GaugeValue, float64(client.TxCCQ), client.Interface, client.MacAddress)
-		}
-		if client.TxRateBps > 0 {
-			s.ch <- prometheus.MustNewConstMetric(c.wirelessClientTxRateDesc, prometheus.GaugeValue, client.TxRateBps, client.Interface, client.MacAddress)
-		}
-		if client.RxRateBps > 0 {
-			s.ch <- prometheus.MustNewConstMetric(c.wirelessClientRxRateDesc, prometheus.GaugeValue, client.RxRateBps, client.Interface, client.MacAddress)
-		}
-		if client.HasNoiseFloor {
-			s.ch <- prometheus.MustNewConstMetric(c.wirelessClientNoiseFloorDesc, prometheus.GaugeValue, float64(client.NoiseFloor), client.Interface, client.MacAddress)
-		}
-		s.ch <- prometheus.MustNewConstMetric(c.wirelessClientUptimeDesc, prometheus.GaugeValue, client.Uptime.Seconds(), client.Interface, client.MacAddress)
 	}
 	for ifaceName, count := range clientCounts {
 		s.ch <- prometheus.MustNewConstMetric(c.wirelessActiveClientsDesc, prometheus.GaugeValue, float64(count), ifaceName)
