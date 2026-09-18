@@ -1,87 +1,40 @@
-# MikroTik RouterOS Prometheus Exporter (ros-exporter)
+# ros-exporter
+
+Prometheus exporter for MikroTik RouterOS. It scrapes devices over the native API and exposes per-router metrics you can alert and graph on.
+
+Use it when you already run Prometheus and need MikroTik CPU, memory, interfaces, and health (plus optional BGP, PPP, wireless, OSPF, or optics) without relying on SNMP.
+
+Default listen address: `:9483`. Requires RouterOS **v6.48+** and a read-only API user on each device.
 
 [![Test](https://github.com/taihen/ros-exporter/actions/workflows/test.yml/badge.svg)](https://github.com/taihen/ros-exporter/actions/workflows/test.yml)
 [![Release](https://github.com/taihen/ros-exporter/actions/workflows/release.yml/badge.svg)](https://github.com/taihen/ros-exporter/actions/workflows/release.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/taihen/ros-exporter)](https://goreportcard.com/report/github.com/taihen/ros-exporter)
 
-A Prometheus exporter for MikroTik RouterOS devices.
+## Quick start
 
-This exporter connects to MikroTik routers using the native API (via the `go-routeros/routeros` library) and exposes metrics for monitoring with Prometheus.
-
-## Features
-
-- System resources (CPU, memory, storage, uptime, board info) — always on
-- System health (temperature, board temperature, voltage, current, power, fan)
-- Interface stats (traffic, packets, errors, drops, admin state, speed, duplex)
-- Optional: BGP, PPP (incl. RX/TX bytes), wireless bridges (legacy + wifiwave2/`/interface/wifi`, AP + station), OSPF, transceiver optics
-- Multi-target `/metrics?target=...` (default port `9483`)
-- Single scrape deadline (`-scrape.timeout`), connection concurrency limit
-- Status metrics: connected vs scrape success vs per-collector error
-- Process health: `/-/healthy`, `/-/ready`, `/-/metrics` (Go/process collectors)
-
-## Requirements
-
-- Go 1.25+
-- MikroTik RouterOS v6.48 or later (tested paths for v6.x and v7.x)
-- A dedicated read-only API user on each router
-
-## Breaking changes since v1.4.0
-
-| Change | Impact |
-|--------|--------|
-| Removed `uptime_text` label from PPP and wireless client info metrics | Series IDs change; use `*_uptime_seconds` instead |
-| BGP peer info label `instance` renamed to `routing_instance` | Avoids clash with Prometheus `instance` |
-| `mikrotik_up` means **API connected**, not full scrape success | Prefer `mikrotik_scrape_success` / `mikrotik_last_scrape_error` for completeness |
-| New metrics: `mikrotik_connected`, `mikrotik_scrape_success`, `mikrotik_collector_error`, `mikrotik_collector_supported` | Update dashboards/alerts |
-| Wireless interface info adds labels `mode`, `role`, `bssid` | Series ID change for `mikrotik_wireless_interface_info` |
-| Wireless client info adds label `ssid` | Series ID change for `mikrotik_wireless_client_info` |
-| Client SNR no longer stored as `noise_floor_dbm` | Use `mikrotik_wireless_*_signal_to_noise_db` |
-
-Existing alert `up{job="ros_exporter"} * mikrotik_up` still works for reachability. Add a second alert on `mikrotik_last_scrape_error == 1` for partial failures. See [docs/ALERTS.md](docs/ALERTS.md).
-
-## Getting Started
-
-### Building
+1. Download a release binary from [Releases](https://github.com/taihen/ros-exporter/releases) (verify `checksums.txt` if you pin installs).
+2. Run it:
 
 ```bash
-go build -ldflags="-X main.version=dev -X main.commit=$(git rev-parse --short HEAD)" -o ros-exporter ./cmd/ros-exporter
+./ros-exporter -web.listen-address=:9483
 ```
 
-### Running
+3. Check liveness: `curl -sS http://localhost:9483/-/healthy`
+4. Create the MikroTik API user (below), then point Prometheus at the exporter.
 
-```bash
-./ros-exporter [flags]
-```
+## MikroTik API user
 
-**Flags:**
-
-- `-web.listen-address`: Listen address (default `:9483`)
-- `-web.telemetry-path`: Target metrics path (default `/metrics`)
-- `-scrape.timeout`: Budget for the **entire** scrape of one target (default `10s`)
-- `-scrape.max-concurrent`: Max concurrent RouterOS API connections (default `25`)
-- `-version`: Print version and exit
-
-### Endpoints
-
-| Path | Purpose |
-|------|---------|
-| `/metrics?target=HOST` | Per-target RouterOS metrics |
-| `/-/metrics` | Exporter process / Go metrics |
-| `/-/healthy` | Liveness |
-| `/-/ready` | Readiness |
-
-Optional query params: `user`, `password`, `port`, `collect_bgp`, `collect_ppp`, `collect_wireless`, `collect_ospf`, `collect_optics`.
-
-### MikroTik Configuration
+Create a dedicated read-only user and allow API only from the exporter host:
 
 ```mikrotik
 /user group add name=prometheus policy=read,api
 /user add name=prometheus group=prometheus password=YOUR_STRONG_PASSWORD address=EXPORTER_IP_ADDRESS
 ```
 
-Allow API (`/ip service`) from the exporter host.
+Enable the API service (`/ip service`) for the exporter IP.
 
-### Prometheus Configuration
+## Prometheus scrape config
+
+Multi-target pattern: Prometheus talks to the exporter; the exporter talks to each router.
 
 ```yaml
 scrape_configs:
@@ -102,57 +55,79 @@ scrape_configs:
         replacement: YOUR_STRONG_PASSWORD
 ```
 
-Optional params: `collect_bgp`, `collect_ppp`, `collect_wireless`, `collect_ospf`, `collect_optics`.
+Set Prometheus `scrape_timeout` **greater than** the exporter `-scrape.timeout` (default `10s`).
 
-Set Prometheus `scrape_timeout` **greater than** exporter `-scrape.timeout`.
+Enable optional collectors with extra `__param_collect_*` labels (see below). Treat passwords in scrape config as secrets.
 
-## Metrics (status)
+## Endpoints
+
+| Path | Purpose |
+|------|---------|
+| `/metrics?target=HOST` | Metrics for one RouterOS device |
+| `/-/metrics` | Exporter process metrics |
+| `/-/healthy` | Liveness |
+| `/-/ready` | Readiness |
+
+Query parameters on `/metrics`: `target` (required), `user`, `password`, `port`, and the `collect_*` flags below.
+
+## Flags
+
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `-web.listen-address` | `:9483` | Listen address |
+| `-web.telemetry-path` | `/metrics` | Path for target scrapes |
+| `-scrape.timeout` | `10s` | Budget for one full target scrape |
+| `-scrape.max-concurrent` | `25` | Max concurrent RouterOS API connections |
+| `-version` | | Print version and exit |
+
+## Optional collectors
+
+Always collected: system (CPU, memory, uptime, storage, board), interfaces, and health (temperature, voltage, current, power, fan).
+
+Turn these on per scrape (default **off**):
+
+| Parameter | Collects |
+|-----------|----------|
+| `collect_bgp=true` | BGP peers (`routing_instance` label) |
+| `collect_ppp=true` | PPP sessions and RX/TX bytes |
+| `collect_wireless=true` | Wireless AP and station (legacy + wifiwave2) |
+| `collect_ospf=true` | OSPF neighbors |
+| `collect_optics=true` | Transceiver temperature and TX/RX power |
+
+Example relabel to enable wireless:
+
+```yaml
+- target_label: __param_collect_wireless
+  replacement: "true"
+```
+
+## Is the scrape healthy?
+
+`mikrotik_up` / `mikrotik_connected` only mean the API login worked. Use scrape success for completeness:
 
 | Metric | Meaning |
 |--------|---------|
-| `mikrotik_up` / `mikrotik_connected` | API TCP login succeeded |
-| `mikrotik_scrape_success` | No collector errors in this scrape |
-| `mikrotik_last_scrape_error` | Inverse signal for partial/full scrape errors |
-| `mikrotik_collector_error{collector=...}` | Per-collector failure |
-| `mikrotik_collector_supported{collector=...}` | Collector enabled/supported on target |
+| `mikrotik_up` / `mikrotik_connected` | API login succeeded |
+| `mikrotik_scrape_success` | No collector errors this scrape |
+| `mikrotik_last_scrape_error` | `1` if any collector failed |
+| `mikrotik_collector_error{collector=...}` | Which collector failed |
+| `mikrotik_collector_supported{collector=...}` | Collector enabled / available on the device |
+| `mikrotik_scrape_duration_seconds` | How long the scrape took |
 | `mikrotik_build_info{version,commit}` | Exporter build |
-| `mikrotik_scrape_duration_seconds` | Scrape duration |
 
-### Always collected
+Alert examples and upgrade notes: [docs/ALERTS.md](docs/ALERTS.md).
 
-- System: CPU, memory, uptime, storage, board info
-- Interfaces: RX/TX bytes/packets/errors/drops, operational status, admin up, speed, duplex (when reported)
-- Health: CPU/board temperature, voltage, current, power, fan
+## More
 
-### Optional
+- [Grafana dashboard](./resources/ros-grafana.json)
+- [systemd unit](./resources/ros-exporter.service)
+- [Alert contract](./docs/ALERTS.md)
+- [MIT License](LICENSE)
 
-- BGP peers (label `routing_instance`)
-- PPP sessions + RX/TX bytes
-- Wireless interfaces/clients (legacy wireless + wifiwave2), AP/station `role`, connected/running, frequency/channel width, rates, noise floor, SNR, CCQ (legacy when reported); both packages merged on mixed devices
-- OSPF neighbors (`collect_ospf=true`)
-- Transceiver temp/TX/RX power (`collect_optics=true`)
+### Build from source
 
-## Testing
+Needs Go 1.25+:
 
 ```bash
-go test ./...
-go vet ./...
+go build -ldflags="-X main.version=dev -X main.commit=$(git rev-parse --short HEAD)" -o ros-exporter ./cmd/ros-exporter
 ```
-
-Fixtures under `pkg/mikrotik/testdata/` cover ROS6 and ROS7 sample payloads.
-
-## Ansible / release notes
-
-- Release assets include per-binary SHA256 in `checksums.txt` and an SPDX SBOM.
-- Pin Ansible downloads to a release tag **and** verify `checksums.txt`.
-- Dashboard/alert changes live in ansible-infrastructure; this repo documents the metric contract in [docs/ALERTS.md](docs/ALERTS.md).
-
-## Additional resources
-
-- [Grafana Dashboard](./resources/ros-grafana.json)
-- [SystemD Service](./resources/ros-exporter.service)
-- [Alert contract](./docs/ALERTS.md)
-
-## License
-
-[MIT License](LICENSE)
