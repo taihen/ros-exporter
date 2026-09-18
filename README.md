@@ -119,7 +119,7 @@ Alert examples and upgrade notes: [docs/ALERTS.md](docs/ALERTS.md).
 
 ## More
 
-- [Grafana dashboard](./resources/ros-grafana.json)
+- [Grafana dashboard](./resources/ros-grafana.json) (pin by release tag or commit SHA/checksum; do not pull mutable `main` blindly)
 - [systemd unit](./resources/ros-exporter.service)
 - [Alert contract](./docs/ALERTS.md)
 - [MIT License](LICENSE)
