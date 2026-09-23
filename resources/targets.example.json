@@ -1,0 +1,13 @@
+{
+  "default_user": "prometheus",
+  "targets": {
+    "192.168.88.1": {
+      "user": "prometheus",
+      "password": "YOUR_STRONG_PASSWORD",
+      "port": "8728"
+    },
+    "core-rtr.example.com": {
+      "password": "OTHER_PASSWORD"
+    }
+  }
+}
