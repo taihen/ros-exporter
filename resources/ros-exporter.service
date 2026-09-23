@@ -9,7 +9,7 @@ Group=ros-exporter
 Type=simple
 Restart=on-failure
 RestartSec=5s
-ExecStart=/usr/local/bin/ros-exporter --web.listen-address=:9483 --web.telemetry-path=/metrics --scrape.timeout=10s
+ExecStart=/usr/local/bin/ros-exporter --web.listen-address=:9483 --web.telemetry-path=/metrics --scrape.timeout=10s --config.file=/etc/ros-exporter/targets.json
 
 # Security settings (optional but recommended)
 # PrivateTmp=true

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -16,6 +17,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/taihen/ros-exporter/pkg/config"
 	"github.com/taihen/ros-exporter/pkg/metrics"
 	"github.com/taihen/ros-exporter/pkg/mikrotik"
 )
@@ -33,10 +35,15 @@ var (
 var (
 	listenAddressFlag = flag.String("web.listen-address", ":9483", "Address to listen on for web interface and telemetry.")
 	metricsPathFlag   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
+	configFileFlag    = flag.String("config.file", "", "Path to JSON file with per-target credentials (allowlist).")
+	unsafeQueryAuth   = flag.Bool("web.unsafe-query-auth", false, "Allow credentials via URL query params (prefer -config.file).")
 	scrapeTimeout     = flag.Duration("scrape.timeout", mikrotik.DefaultTimeout, "Timeout for scraping a target (entire scrape budget).")
 	maxConcurrent     = flag.Int("scrape.max-concurrent", mikrotik.DefaultMaxConcurrent, "Maximum concurrent RouterOS API connections.")
 	showVersion       = flag.Bool("version", false, "Print version and exit.")
 )
+
+// targetStore is set at startup when -config.file is provided.
+var targetStore *config.Store
 
 func main() {
 	flag.Parse()
@@ -46,6 +53,22 @@ func main() {
 		os.Exit(0)
 	}
 
+	if *configFileFlag == "" && !*unsafeQueryAuth {
+		log.Fatal("either -config.file or -web.unsafe-query-auth is required")
+	}
+
+	if *configFileFlag != "" {
+		store, err := config.Load(*configFileFlag)
+		if err != nil {
+			log.Fatalf("load config file: %v", err)
+		}
+		targetStore = store
+		log.Printf("Loaded target credentials from %s", *configFileFlag)
+	}
+	if *unsafeQueryAuth {
+		log.Printf("WARNING: -web.unsafe-query-auth is enabled; passwords may appear in scrape URLs")
+	}
+
 	mikrotik.SetMaxConcurrent(*maxConcurrent)
 
 	log.Printf("Starting MikroTik Prometheus Exporter %s", version)
@@ -53,8 +76,8 @@ func main() {
 	log.Printf("Metrics Path: %s", *metricsPathFlag)
 	log.Printf("Scrape Timeout: %s", *scrapeTimeout)
 	log.Printf("Max Concurrent Connections: %d", *maxConcurrent)
-	log.Printf("Default Username (if not provided via param): %s", defaultUsername)
-	log.Printf("Default API Port (if not provided via param): %s", defaultAPIPort)
+	log.Printf("Default Username (if not provided): %s", defaultUsername)
+	log.Printf("Default API Port (if not provided): %s", defaultAPIPort)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -122,28 +145,59 @@ func main() {
 	log.Println("Server gracefully stopped")
 }
 
+// resolveCredentials picks user/password/address from the config store when present,
+// otherwise from query params (unsafe mode). queryPasswordIgnored is true when a
+// query password was sent but ignored because config.file is in use.
+func resolveCredentials(store *config.Store, unsafe bool, target, queryUser, queryPassword, queryPort string) (user, password, address string, queryPasswordIgnored bool, err error) {
+	if store != nil {
+		user, password, address, err = store.Resolve(target, queryPort)
+		if err != nil {
+			return "", "", "", queryPassword != "", err
+		}
+		return user, password, address, queryPassword != "", nil
+	}
+
+	if !unsafe {
+		return "", "", "", false, errors.New("no credentials store configured")
+	}
+
+	user = queryUser
+	if user == "" {
+		user = defaultUsername
+	}
+	password = queryPassword
+	address = target
+	if queryPort != "" {
+		address = net.JoinHostPort(target, queryPort)
+	}
+	return user, password, address, false, nil
+}
+
 func handleMetricsRequest(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	target := query.Get("target")
-	user := query.Get("user")
-	password := query.Get("password")
-	port := query.Get("port")
+	queryUser := query.Get("user")
+	queryPassword := query.Get("password")
+	queryPort := query.Get("port")
 
 	if target == "" {
 		http.Error(w, "'target' parameter is missing", http.StatusBadRequest)
 		return
 	}
 
-	effectiveUser := user
-	if effectiveUser == "" {
-		effectiveUser = defaultUsername
-		log.Printf("Scrape for target %s: 'user' parameter missing, using default '%s'", target, defaultUsername)
+	user, password, address, ignoredPassword, err := resolveCredentials(
+		targetStore, *unsafeQueryAuth, target, queryUser, queryPassword, queryPort,
+	)
+	if err != nil {
+		if errors.Is(err, config.ErrUnknownTarget) {
+			http.Error(w, "unknown target", http.StatusForbidden)
+			return
+		}
+		http.Error(w, "failed to resolve credentials", http.StatusInternalServerError)
+		return
 	}
-
-	address := target
-	if port != "" {
-		address = net.JoinHostPort(target, port)
-		log.Printf("Scrape for target %s: Using specified port %s -> %s", target, port, address)
+	if ignoredPassword {
+		log.Printf("Scrape for target %s: ignoring query password because -config.file is set", target)
 	}
 
 	collectBGP, _ := strconv.ParseBool(query.Get("collect_bgp"))
@@ -153,9 +207,9 @@ func handleMetricsRequest(w http.ResponseWriter, r *http.Request) {
 	collectOptics, _ := strconv.ParseBool(query.Get("collect_optics"))
 
 	log.Printf("Processing scrape request for address: %s, user: %s, bgp=%t ppp=%t wireless=%t ospf=%t optics=%t",
-		address, effectiveUser, collectBGP, collectPPP, collectWireless, collectOSPF, collectOptics)
+		address, user, collectBGP, collectPPP, collectWireless, collectOSPF, collectOptics)
 
-	client := mikrotik.NewClient(address, effectiveUser, password, *scrapeTimeout)
+	client := mikrotik.NewClient(address, user, password, *scrapeTimeout)
 	defer client.Close()
 
 	registry := prometheus.NewRegistry()
