@@ -1,8 +1,12 @@
 package metrics
 
 import (
+	"context"
+	"net"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
@@ -74,5 +78,70 @@ func TestCollectorStatusMetricsOnConnectFailure(t *testing.T) {
 	}
 	if got["scrape_success"] != 0 || got["last_scrape_error"] != 1 {
 		t.Fatalf("expected scrape failure, got %#v", got)
+	}
+}
+
+func TestCollectorCancelledContextReturnsFast(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var mu sync.Mutex
+	var accepted []net.Conn
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			mu.Lock()
+			accepted = append(accepted, conn)
+			mu.Unlock()
+		}
+	}()
+	defer func() {
+		_ = ln.Close()
+		mu.Lock()
+		defer mu.Unlock()
+		for _, conn := range accepted {
+			_ = conn.Close()
+		}
+	}()
+
+	// Already cancelled. A collector that ignores ScrapeContext dials the
+	// listener and blocks in login; one that honors it returns immediately.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	client := mikrotik.NewClient(ln.Addr().String(), "u", "p", 30*time.Second)
+	c := NewMikrotikCollectorWithOptions(client, CollectorOptions{ScrapeContext: ctx})
+
+	ch := make(chan prometheus.Metric, 64)
+	done := make(chan struct{})
+	go func() {
+		c.Collect(ch)
+		close(ch)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("collect did not return within 1s")
+	}
+	got := map[string]float64{}
+	for m := range ch {
+		var dtoMetric dto.Metric
+		if err := m.Write(&dtoMetric); err != nil {
+			t.Fatal(err)
+		}
+		desc := m.Desc().String()
+		if strings.Contains(desc, `fqName: "mikrotik_up"`) {
+			got["up"] = dtoMetric.GetGauge().GetValue()
+		}
+		if strings.Contains(desc, "mikrotik_scrape_success") {
+			got["scrape_success"] = dtoMetric.GetGauge().GetValue()
+		}
+	}
+	if got["up"] != 0 || got["scrape_success"] != 0 {
+		t.Fatalf("metrics=%#v", got)
 	}
 }

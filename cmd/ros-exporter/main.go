@@ -37,7 +37,7 @@ var (
 	metricsPathFlag   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
 	configFileFlag    = flag.String("config.file", "", "Path to JSON file with per-target credentials (allowlist).")
 	unsafeQueryAuth   = flag.Bool("web.unsafe-query-auth", false, "Allow credentials via URL query params (prefer -config.file).")
-	scrapeTimeout     = flag.Duration("scrape.timeout", mikrotik.DefaultTimeout, "Timeout for scraping a target (entire scrape budget).")
+	scrapeTimeout     = flag.Duration("scrape.timeout", mikrotik.DefaultTimeout, "Maximum time for one target scrape. Prometheus may shorten it via X-Prometheus-Scrape-Timeout-Seconds.")
 	maxConcurrent     = flag.Int("scrape.max-concurrent", mikrotik.DefaultMaxConcurrent, "Maximum concurrent RouterOS API connections.")
 	showVersion       = flag.Bool("version", false, "Print version and exit.")
 )
@@ -206,10 +206,14 @@ func handleMetricsRequest(w http.ResponseWriter, r *http.Request) {
 	collectOSPF, _ := strconv.ParseBool(query.Get("collect_ospf"))
 	collectOptics, _ := strconv.ParseBool(query.Get("collect_optics"))
 
-	log.Printf("Processing scrape request for address: %s, user: %s, bgp=%t ppp=%t wireless=%t ospf=%t optics=%t",
-		address, user, collectBGP, collectPPP, collectWireless, collectOSPF, collectOptics)
+	budget := effectiveScrapeTimeout(*scrapeTimeout, r.Header.Get(prometheusScrapeTimeoutHeader))
+	ctx, cancel := context.WithTimeout(r.Context(), budget)
+	defer cancel()
 
-	client := mikrotik.NewClient(address, user, password, *scrapeTimeout)
+	log.Printf("Processing scrape request for address: %s, user: %s, bgp=%t ppp=%t wireless=%t ospf=%t optics=%t timeout=%s",
+		address, user, collectBGP, collectPPP, collectWireless, collectOSPF, collectOptics, budget)
+
+	client := mikrotik.NewClient(address, user, password, budget)
 	defer client.Close()
 
 	registry := prometheus.NewRegistry()
@@ -221,6 +225,7 @@ func handleMetricsRequest(w http.ResponseWriter, r *http.Request) {
 		CollectOptics:   collectOptics,
 		Version:         version,
 		Commit:          commit,
+		ScrapeContext:   ctx,
 	})
 	registry.MustRegister(collector)
 

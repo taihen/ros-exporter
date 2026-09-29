@@ -86,8 +86,28 @@ func (c *Client) ConnectContext(ctx context.Context) error {
 	}
 
 	log.Printf("Connecting to MikroTik router at %s...", addr)
-	cli, err := routeros.DialContext(ctx, addr, c.Username, c.Password)
+	conn, err := (&net.Dialer{}).DialContext(ctx, "tcp", addr)
 	if err != nil {
+		releaseConn()
+		log.Printf("Error dialing MikroTik router %s: %v", addr, err)
+		return err
+	}
+	// The library's sync reads do not watch ctx. Closing the socket is what
+	// unblocks a stalled login or command when the scrape is cancelled.
+	go func() {
+		<-ctx.Done()
+		_ = conn.Close()
+	}()
+
+	cli, err := routeros.NewClient(conn)
+	if err != nil {
+		_ = conn.Close()
+		releaseConn()
+		log.Printf("Error dialing MikroTik router %s: %v", addr, err)
+		return err
+	}
+	if err := cli.LoginContext(ctx, c.Username, c.Password); err != nil {
+		_ = cli.Close()
 		releaseConn()
 		log.Printf("Error dialing MikroTik router %s: %v", addr, err)
 		return err

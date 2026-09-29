@@ -27,6 +27,9 @@ func SetMaxConcurrent(n int) {
 }
 
 func acquireConn(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	limiterMu.Lock()
 	sem := connSem
 	limiterMu.Unlock()

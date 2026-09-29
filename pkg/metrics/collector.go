@@ -112,6 +112,10 @@ type MikrotikCollector struct {
 
 	version string
 	commit  string
+
+	// scrapeParent is the HTTP request context, already bounded by the scrape budget.
+	// Nil means context.Background().
+	scrapeParent context.Context
 }
 
 type CollectorOptions struct {
@@ -122,6 +126,9 @@ type CollectorOptions struct {
 	CollectOptics   bool
 	Version         string
 	Commit          string
+	// ScrapeContext is the HTTP request context, already bounded by the
+	// scrape budget. Nil means context.Background().
+	ScrapeContext context.Context
 }
 
 // NewMikrotikCollector initializes a new collector instance.
@@ -143,6 +150,7 @@ func NewMikrotikCollectorWithOptions(client *mikrotik.Client, opts CollectorOpti
 		collectOptics:   opts.CollectOptics,
 		version:         opts.Version,
 		commit:          opts.Commit,
+		scrapeParent:    opts.ScrapeContext,
 		upDesc: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "up"),
 			"1 if the exporter connected to the MikroTik API (not full scrape success). Prefer mikrotik_connected.",
@@ -643,7 +651,11 @@ func (c *MikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 	}
 	ch <- prometheus.MustNewConstMetric(c.buildInfoDesc, prometheus.GaugeValue, 1, version, c.commit)
 
-	ctx, cancel := c.client.BeginScrape(context.Background())
+	parent := c.scrapeParent
+	if parent == nil {
+		parent = context.Background()
+	}
+	ctx, cancel := c.client.BeginScrape(parent)
 	defer cancel()
 
 	scrape := &scrapeState{
