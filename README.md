@@ -102,7 +102,7 @@ scrape_configs:
         replacement: localhost:9483
 ```
 
-Set Prometheus `scrape_timeout` **greater than** the exporter `-scrape.timeout` (default `10s`).
+The scrape budget is the shorter of `-scrape.timeout` (default `10s`) and the adjusted Prometheus header `X-Prometheus-Scrape-Timeout-Seconds`. Adjust the header first: subtract 500ms when it is longer than 500ms, so the exporter can write the response before Prometheus closes the scrape; otherwise use the header as-is, or 1ms if it rounds down to zero. A 10s header with a 10s flag is 9.5s. A longer header, such as 50s, does not reduce a 10s flag. A missing or invalid header leaves `-scrape.timeout` unchanged. A client disconnect cancels the scrape and releases its connection slot. Set Prometheus `scrape_timeout` to cover the metrics you need; the exporter will not keep working after that header.
 
 Enable optional collectors with extra `__param_collect_*` labels (see below).
 
@@ -125,7 +125,7 @@ Query parameters on `/metrics`: `target` (required), optional `port`, and the `c
 | `-web.telemetry-path` | `/metrics` | Path for target scrapes |
 | `-config.file` | | JSON file with per-target credentials (allowlist) |
 | `-web.unsafe-query-auth` | `false` | Allow credentials via URL query params |
-| `-scrape.timeout` | `10s` | Budget for one full target scrape |
+| `-scrape.timeout` | `10s` | Maximum time for one target scrape. Prometheus may shorten it via `X-Prometheus-Scrape-Timeout-Seconds` |
 | `-scrape.max-concurrent` | `25` | Max concurrent RouterOS API connections |
 | `-version` | | Print version and exit |
 
