@@ -191,11 +191,24 @@ func (c *Client) run(ctx context.Context, kind string, fn func(*routeros.Client)
 
 	reply, err := fn(cli)
 	if err != nil {
-		log.Printf("Error running %s on %s: %v", kind, c.Address, err)
 		if ctx.Err() != nil {
 			c.Close()
+			return nil, preferContextErr(ctx, err)
 		}
+		log.Printf("Error running %s on %s: %v", kind, c.Address, err)
 		return nil, err
 	}
 	return reply, nil
+}
+
+// preferContextErr returns ctx.Err() when the scrape context is done so
+// callers treat mid-flight socket close as cancel/deadline, not a device fault.
+func preferContextErr(ctx context.Context, err error) error {
+	if err == nil {
+		return nil
+	}
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return ctxErr
+	}
+	return err
 }
