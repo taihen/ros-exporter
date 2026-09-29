@@ -2,6 +2,8 @@ package metrics
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net"
 	"strings"
 	"sync"
@@ -143,5 +145,94 @@ func TestCollectorCancelledContextReturnsFast(t *testing.T) {
 	}
 	if got["up"] != 0 || got["scrape_success"] != 0 {
 		t.Fatalf("metrics=%#v", got)
+	}
+}
+
+func TestRunCollectorStepsSkipsAfterCancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	var called []string
+	steps := []func(){
+		func() { called = append(called, "a") },
+		func() {
+			called = append(called, "b")
+			cancel()
+		},
+		func() { called = append(called, "c") },
+	}
+	runCollectorSteps(ctx, steps)
+	if got := strings.Join(called, ","); got != "a,b" {
+		t.Fatalf("called=%q want a,b", got)
+	}
+}
+
+func TestRunCollectorStepsRunsAllWhenLive(t *testing.T) {
+	var called []string
+	steps := []func(){
+		func() { called = append(called, "a") },
+		func() { called = append(called, "b") },
+		func() { called = append(called, "c") },
+	}
+	runCollectorSteps(context.Background(), steps)
+	if got := strings.Join(called, ","); got != "a,b,c" {
+		t.Fatalf("called=%q want a,b,c", got)
+	}
+}
+
+func TestRunCollectorStepsSkipsAllWhenAlreadyCancelled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	var called []string
+	runCollectorSteps(ctx, []func(){
+		func() { called = append(called, "a") },
+	})
+	if len(called) != 0 {
+		t.Fatalf("called=%v want none", called)
+	}
+}
+
+func TestMarkErrIgnoresCancelAndDeadline(t *testing.T) {
+	s := &scrapeState{errors: map[string]bool{}, addr: "t"}
+	s.markErr("bgp", context.Canceled)
+	s.markErr("ppp", context.DeadlineExceeded)
+	s.markErr("ospf", fmt.Errorf("wrap: %w", context.Canceled))
+	s.markErr("optics", fmt.Errorf("wrap: %w", context.DeadlineExceeded))
+	if len(s.errors) != 0 {
+		t.Fatalf("errors=%v want empty", s.errors)
+	}
+	s.markErr("system", errors.New("boom"))
+	if !s.errors["system"] {
+		t.Fatal("expected system error recorded")
+	}
+}
+
+func TestEmitCollectorStatusOmitsNeverStarted(t *testing.T) {
+	client := mikrotik.NewClient("127.0.0.1", "u", "p", mikrotik.DefaultTimeout)
+	c := NewMikrotikCollector(client, false, false, false)
+	ch := make(chan prometheus.Metric, 16)
+	s := &scrapeState{
+		ch:        ch,
+		addr:      "t",
+		errors:    map[string]bool{},
+		supported: map[string]float64{"system": 1},
+	}
+	s.emitCollectorStatus(c)
+	close(ch)
+	seen := map[string]bool{}
+	for m := range ch {
+		var dtoMetric dto.Metric
+		if err := m.Write(&dtoMetric); err != nil {
+			t.Fatal(err)
+		}
+		for _, lp := range dtoMetric.GetLabel() {
+			if lp.GetName() == "collector" {
+				seen[lp.GetValue()] = true
+			}
+		}
+	}
+	if !seen["system"] {
+		t.Fatal("expected system collector status")
+	}
+	if seen["interfaces"] || seen["health"] {
+		t.Fatalf("never-started collectors should be omitted, got %#v", seen)
 	}
 }

@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"context"
+	"errors"
 	"log"
 	"strconv"
 	"sync"
@@ -659,14 +660,10 @@ func (c *MikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 	defer cancel()
 
 	scrape := &scrapeState{
-		ch:     ch,
-		addr:   c.client.Address,
-		errors: map[string]bool{},
-		supported: map[string]float64{
-			"system":     1,
-			"interfaces": 1,
-			"health":     1,
-		},
+		ch:        ch,
+		addr:      c.client.Address,
+		errors:    map[string]bool{},
+		supported: map[string]float64{},
 	}
 
 	if err := c.client.ConnectContext(ctx); err != nil {
@@ -677,25 +674,37 @@ func (c *MikrotikCollector) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
-	c.collectSystem(scrape)
-	c.collectRouterboard(scrape)
-	c.collectInterfaces(scrape)
-	c.collectHealth(scrape)
-	if c.collectBGP {
-		c.collectBGPPeers(scrape)
-	}
-	if c.collectPPP {
-		c.collectPPPUsers(scrape)
-	}
-	if c.collectWireless {
-		c.collectWirelessMetrics(scrape)
-	}
-	if c.collectOSPF {
-		c.collectOSPFNeighbors(scrape)
-	}
-	if c.collectOptics {
-		c.collectOpticsMetrics(scrape)
-	}
+	runCollectorSteps(ctx, []func(){
+		func() { c.collectSystem(scrape) },
+		func() { c.collectRouterboard(scrape) },
+		func() { c.collectInterfaces(scrape) },
+		func() { c.collectHealth(scrape) },
+		func() {
+			if c.collectBGP {
+				c.collectBGPPeers(scrape)
+			}
+		},
+		func() {
+			if c.collectPPP {
+				c.collectPPPUsers(scrape)
+			}
+		},
+		func() {
+			if c.collectWireless {
+				c.collectWirelessMetrics(scrape)
+			}
+		},
+		func() {
+			if c.collectOSPF {
+				c.collectOSPFNeighbors(scrape)
+			}
+		},
+		func() {
+			if c.collectOptics {
+				c.collectOpticsMetrics(scrape)
+			}
+		},
+	})
 
 	hasError := len(scrape.errors) > 0 || ctx.Err() != nil
 	scrape.emitCollectorStatus(c)
@@ -711,11 +720,26 @@ type scrapeState struct {
 	supported map[string]float64
 }
 
-func (s *scrapeState) markErr(name string, err error) {
-	if err != nil {
-		log.Printf("ERROR: collector %s on %s: %v", name, s.addr, err)
-		s.errors[name] = true
+// runCollectorSteps runs steps in order and stops when ctx is done so
+// later collectors are not started after cancel or deadline.
+func runCollectorSteps(ctx context.Context, steps []func()) {
+	for _, step := range steps {
+		if ctx.Err() != nil {
+			return
+		}
+		step()
 	}
+}
+
+func (s *scrapeState) markErr(name string, err error) {
+	if err == nil {
+		return
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return
+	}
+	log.Printf("ERROR: collector %s on %s: %v", name, s.addr, err)
+	s.errors[name] = true
 }
 
 func (s *scrapeState) emitCollectorStatus(c *MikrotikCollector) {
@@ -747,6 +771,7 @@ func boolToFloat(b bool) float64 {
 }
 
 func (c *MikrotikCollector) collectSystem(s *scrapeState) {
+	s.supported["system"] = 1
 	systemRes, err := c.client.GetSystemResources()
 	s.markErr("system", err)
 	if err != nil {
@@ -775,6 +800,7 @@ func (c *MikrotikCollector) collectRouterboard(s *scrapeState) {
 }
 
 func (c *MikrotikCollector) collectInterfaces(s *scrapeState) {
+	s.supported["interfaces"] = 1
 	interfaceStats, err := c.client.GetInterfaceStats()
 	s.markErr("interfaces", err)
 	if err != nil {
@@ -803,6 +829,7 @@ func (c *MikrotikCollector) collectInterfaces(s *scrapeState) {
 }
 
 func (c *MikrotikCollector) collectHealth(s *scrapeState) {
+	s.supported["health"] = 1
 	health, err := c.client.GetSystemHealth()
 	s.markErr("health", err)
 	if err != nil || health == nil {

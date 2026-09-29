@@ -29,6 +29,8 @@ Per collector:
 expr: mikrotik_collector_error{collector=~"system|interfaces|health|wireless"} == 1
 ```
 
+Timeout or cancel after connect is scrape-level (`mikrotik_scrape_success == 0`). Later collectors are skipped and may omit `mikrotik_collector_error` series for that scrape; absence means skipped, not healthy. Do not expect every collector to show `mikrotik_collector_error` on budget expiry.
+
 ## Health / capacity
 
 ```yaml

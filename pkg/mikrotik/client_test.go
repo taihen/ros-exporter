@@ -2,6 +2,7 @@ package mikrotik
 
 import (
 	"context"
+	"errors"
 	"net"
 	"sync"
 	"testing"
@@ -167,4 +168,20 @@ func TestCloseIdempotent(t *testing.T) {
 	c := NewClient("127.0.0.1:1", "u", "p", time.Second)
 	c.Close()
 	c.Close()
+}
+
+func TestPreferContextErr(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	got := preferContextErr(ctx, errors.New("connection reset"))
+	if !errors.Is(got, context.Canceled) {
+		t.Fatalf("got=%v", got)
+	}
+	live := preferContextErr(context.Background(), errors.New("boom"))
+	if live.Error() != "boom" {
+		t.Fatalf("got=%v", live)
+	}
+	if preferContextErr(context.Background(), nil) != nil {
+		t.Fatal("nil should stay nil")
+	}
 }
