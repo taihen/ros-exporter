@@ -39,6 +39,8 @@ expr: mikrotik_health_temperature_celsius > 75
 expr: mikrotik_health_board_temperature_celsius > 75
 ```
 
+Storage gauges are API byte counts. The free/total ratio above is stable across the unit fix; do not alert on an absolute `mikrotik_system_storage_*_bytes` threshold copied from a release that multiplied HDD space by 1024.
+
 ## Interfaces
 
 ```yaml

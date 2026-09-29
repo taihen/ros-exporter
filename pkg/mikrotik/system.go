@@ -18,24 +18,30 @@ func (c *Client) GetSystemResources() (*SystemResource, error) {
 	}
 	res := reply.Re[0].Map
 
+	return systemResourceFromMap(res), nil
+}
+
+// systemResourceFromMap converts a /system/resource/print row.
+// free-hdd-space and total-hdd-space are bytes on RouterOS 6.48+, same as memory.
+func systemResourceFromMap(res map[string]string) *SystemResource {
 	uptime := parseOrWarn("uptime", res["uptime"], parseMikrotikDuration)
 	freeMem := parseOrWarn("free-memory", res["free-memory"], parseBytes)
 	totalMem := parseOrWarn("total-memory", res["total-memory"], parseBytes)
 	cpuLoad := parseOrWarn("cpu-load", res["cpu-load"], parseUint)
-	freeHDDSpaceKiB := parseOrWarn("free-hdd-space", res["free-hdd-space"], parseBytes)
-	totalHDDSpaceKiB := parseOrWarn("total-hdd-space", res["total-hdd-space"], parseBytes)
+	freeHDD := parseOrWarn("free-hdd-space", res["free-hdd-space"], parseBytes)
+	totalHDD := parseOrWarn("total-hdd-space", res["total-hdd-space"], parseBytes)
 
 	return &SystemResource{
 		Uptime:        uptime,
 		FreeMemory:    freeMem,
 		TotalMemory:   totalMem,
 		CPULoad:       cpuLoad,
-		FreeHDDSpace:  freeHDDSpaceKiB * 1024,
-		TotalHDDSpace: totalHDDSpaceKiB * 1024,
+		FreeHDDSpace:  freeHDD,
+		TotalHDDSpace: totalHDD,
 		BoardName:     res["board-name"],
 		Model:         res["model"],
 		SerialNumber:  res["serial-number"],
-	}, nil
+	}
 }
 
 func (c *Client) GetRouterboard() (*Routerboard, error) {

@@ -133,6 +133,8 @@ Query parameters on `/metrics`: `target` (required), optional `port`, and the `c
 
 Always collected: system (CPU, memory, uptime, storage, board), interfaces, and health (temperature, voltage, current, power, fan).
 
+`mikrotik_system_storage_*_bytes` are the byte counts RouterOS returns for `free-hdd-space` and `total-hdd-space`. Releases that multiplied those fields by 1024 reported storage about 1024 times too high. Free/total ratios stay valid, including the bundled Grafana "Storage Usage" panel and the alert in `docs/ALERTS.md`. Update any threshold or dashboard that graphs the raw byte values.
+
 Turn these on per scrape (default **off**):
 
 | Parameter | Collects |
