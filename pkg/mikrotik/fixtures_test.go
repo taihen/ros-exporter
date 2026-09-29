@@ -31,6 +31,10 @@ func TestFixtureROS6SystemAndWireless(t *testing.T) {
 	if err != nil || uptime <= 0 {
 		t.Fatalf("uptime: %v %v", uptime, err)
 	}
+	sys := systemResourceFromMap(res)
+	if sys.TotalHDDSpace != 134217728 || sys.FreeHDDSpace != 115208192 {
+		t.Fatalf("ros6 hdd free=%d total=%d", sys.FreeHDDSpace, sys.TotalHDDSpace)
+	}
 
 	var health map[string]string
 	if err := json.Unmarshal(root["health_flat"], &health); err != nil {
@@ -90,6 +94,15 @@ func TestFixtureROS6SystemAndWireless(t *testing.T) {
 
 func TestFixtureROS7HealthWifiBGPPPP(t *testing.T) {
 	root := loadFixture(t, "ros7_sample.json")
+
+	var sysRes map[string]string
+	if err := json.Unmarshal(root["system_resource"], &sysRes); err != nil {
+		t.Fatal(err)
+	}
+	sys := systemResourceFromMap(sysRes)
+	if sys.TotalHDDSpace != 134217728 || sys.FreeHDDSpace != 83439616 {
+		t.Fatalf("ros7 hdd free=%d total=%d", sys.FreeHDDSpace, sys.TotalHDDSpace)
+	}
 
 	var rows []map[string]string
 	if err := json.Unmarshal(root["health_rows"], &rows); err != nil {
